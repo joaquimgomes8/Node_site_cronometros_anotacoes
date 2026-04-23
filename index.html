@@ -611,7 +611,7 @@
         texto.addEventListener('input', salvarNotas);
 
         card.append(header, texto);
-        notasContainer.appendChild(card);
+        if (dados) notasContainer.appendChild(card); else notasContainer.prepend(card);
 
         // Apply color
         aplicarCorCard(card, colorPicker.value);
@@ -854,7 +854,7 @@
         countdownRow.append(countdownInput);
         controls.append(btnCountdown, btnStop, btnReset, btnDelete, colorDot);
         div.append(nomeInput, tempo, progressoContainer, countdownRow, controls);
-        container.appendChild(div);
+        if (dados) container.appendChild(div); else container.prepend(div);
 
         let segundosTotais = 0, intervalo = null, fim = null;
 
@@ -936,7 +936,7 @@
         URL.revokeObjectURL(url);
     }
     document.getElementById('btn-exportar').addEventListener('click', exportarDados);
-    
+
     window.addEventListener('load', () => { carregarCronometros(); carregarNotas(); });
 </script>
 </body>
