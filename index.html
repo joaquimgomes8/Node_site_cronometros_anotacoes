@@ -431,6 +431,11 @@
     body.zen-active .sidebar { display: none; }
     body.zen-active .notes-panel { width: 100%; }
 
+    /*Botao de minimizar nota*/
+    .nota-card.minimizada .nota-texto {
+        display: none;
+    }
+
     /* ── STATUS BADGE ── */
     .badge {
         font-family: var(--font-mono);
@@ -590,6 +595,18 @@
 
         headerActions.append(swatch, btnExcluir);
         header.append(titulo, headerActions);
+
+        const btnMinimizar = document.createElement('button');
+        btnMinimizar.className = 'btn btn-ghost btn-icon';
+        btnMinimizar.title = 'Minimizar nota';
+        btnMinimizar.textContent = '−';
+        btnMinimizar.addEventListener('click', () => {
+            const minimizado = card.classList.toggle('minimizada');
+            btnMinimizar.textContent = minimizado ? '+' : '−';
+        });
+
+        headerActions.append(swatch, btnMinimizar, btnExcluir); // adiciona antes do excluir
+        header.append(titulo, headerActions);        
 
         // Textarea
         const texto = document.createElement('textarea');
