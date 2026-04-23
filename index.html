@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="icon.png">
+    <title>Workspace</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<style>
+    :root {
+        --bg: #0d1117;
+        --bg-panel: #161b22;
+        --bg-card: #1c2333;
+        --bg-input: #0d1117;
+        --text: #e6edf3;
+        --text-muted: #7d8590;
+        --accent: #58a6ff;
+        --accent-dim: rgba(88, 166, 255, 0.12);
+        --border: #30363d;
+        --border-focus: #58a6ff;
+        --danger: #f85149;
+        --success: #3fb950;
+        --warning: #d29922;
+        --radius: 8px;
+        --radius-sm: 5px;
+        --font-mono: 'IBM Plex Mono', monospace;
+        --font-ui: 'DM Sans', sans-serif;
+        --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    [data-theme="light"] {
+        --bg: #f0f2f5;
+        --bg-panel: #ffffff;
+        --bg-card: #f6f8fa;
+        --bg-input: #ffffff;
+        --text: #1c2333;
+        --text-muted: #57606a;
+        --accent: #0969da;
+        --accent-dim: rgba(9, 105, 218, 0.08);
+        --border: #d0d7de;
+        --border-focus: #0969da;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: var(--font-ui);
+        background: var(--bg);
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.5;
+        min-height: 100vh;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+        height: 40px;
+        background: var(--bg-panel);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .topbar-logo {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+    .topbar-divider {
+        width: 1px;
+        height: 18px;
+        background: var(--border);
+    }
+    .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        font-family: var(--font-ui);
+        font-size: 12px;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        color: var(--text);
+        white-space: nowrap;
+    }
+    .btn:hover { background: var(--bg-input); border-color: var(--accent); color: var(--accent); }
+    .btn-ghost { background: transparent; border-color: transparent; }
+    .btn-ghost:hover { background: var(--accent-dim); border-color: transparent; color: var(--accent); }
+    .btn-icon {
+        padding: 4px 6px;
+        font-size: 13px;
+    }
+    .btn-danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(248, 81, 73, 0.1); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #0d1117; font-weight: 600; }
+    .btn-primary:hover { opacity: 0.85; color: #0d1117; }
+
+    /* ── LAYOUT ── */
+    .workspace {
+        display: flex;
+        min-height: calc(100vh - 40px);
+    }
+
+    /* ── SIDEBAR (CRONÔMETROS) ── */
+    .sidebar {
+        width: 230px;
+        min-width: 230px;
+        background: var(--bg-panel);
+        border-right: 1px solid var(--border);
+        display: flex;
+        position: sticky;
+        top: 40px;
+        height: calc(100vh - 40px);
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .sidebar-header {
+        padding: 10px 12px 8px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .sidebar-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+    }
+    .sidebar-actions {
+        display: flex;
+        gap: 4px;
+    }
+    .sidebar-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .sidebar-body::-webkit-scrollbar { width: 4px; }
+    .sidebar-body::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── CRONÔMETRO CARD ── */
+    .cronometro {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 8px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        cursor: grab;
+        position: relative;
+        overflow: hidden;
+    }
+    .cronometro::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        background: var(--cron-color, var(--accent));
+        opacity: 0.7;
+    }
+    .cronometro:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
+    .cronometro.dragging { opacity: 0.4; cursor: grabbing; }
+    .cronometro.running::before { opacity: 1; animation: pulse-bar 2s ease-in-out infinite; }
+
+    @keyframes pulse-bar {
+        0%, 100% { opacity: 0.7; }
+        50% { opacity: 1; }
+    }
+
+    .cron-name {
+        font-family: var(--font-ui);
+        font-size: 11px;
+        background: transparent;
+        color: var(--text-muted);
+        border: none;
+        border-bottom: 1px solid transparent;
+        width: 100%;
+        padding: 0 0 3px;
+        margin-bottom: 4px;
+        outline: none;
+        transition: border-color 0.15s, color 0.15s;
+        font-weight: 500;
+    }
+    .cron-name:focus { border-bottom-color: var(--border-focus); color: var(--text); }
+    .cron-name::placeholder { color: var(--text-muted); opacity: 0.6; }
+
+    .cron-time {
+        font-family: var(--font-mono);
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--text);
+        text-align: center;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        padding: 4px 0;
+        display: block;
+        transition: color 0.15s;
+    }
+    .cronometro.running .cron-time { color: var(--accent); }
+    .cron-time:hover { color: var(--accent); }
+
+    .cron-controls {
+        display: flex;
+        gap: 4px;
+        margin-top: 6px;
+        align-items: center;
+    }
+    .cron-controls .btn { flex: 1; justify-content: center; padding: 3px 4px; font-size: 11px; }
+    .cron-color-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 1.5px solid var(--border);
+        cursor: pointer;
+        padding: 0;
+        overflow: hidden;
+        flex: 0 0 20px;
+    }
+    .cron-color-dot input[type="color"] {
+        width: 200%;
+        height: 200%;
+        margin: -50%;
+        border: none;
+        cursor: pointer;
+        opacity: 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* countdown input */
+    .countdown-row {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+    }
+    .cron-countdown {
+        flex: 1;
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        padding: 3px 6px;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+    .cron-countdown:focus { border-color: var(--border-focus); }
+    .cron-countdown::placeholder { color: var(--text-muted); opacity: 0.5; }
+
+    /* progress bar */
+    .progresso-container {
+        height: 3px;
+        background: var(--border);
+        border-radius: 2px;
+        margin: 6px 0 2px;
+        overflow: hidden;
+        display: none;
+    }
+    .progresso-barra {
+        height: 100%;
+        background: var(--success);
+        border-radius: 2px;
+        transition: background 0.5s;
+    }
+
+    /* ── NOTES PANEL ── */
+    .notes-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+    }
+    .notes-header {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg-panel);
+    }
+    .notes-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+    }
+    .notes-actions { display: flex; gap: 6px; align-items: center; }
+    .notes-body {
+        flex: 1;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .notes-body::-webkit-scrollbar { width: 4px; }
+    .notes-body::-webkit-scrollbar-track { background: transparent; }
+    .notes-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .notes-footer {
+        padding: 6px 12px;
+        border-top: 1px solid var(--border);
+        background: var(--bg-panel);
+    }
+    .notes-footer p {
+        font-size: 10px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .notes-footer p::before {
+        content: '';
+        width: 6px; height: 6px;
+        background: var(--success);
+        border-radius: 50%;
+        display: inline-block;
+        animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+
+    /* ── NOTA CARD ── */
+    .nota-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        cursor: grab;
+        position: relative;
+    }
+    .nota-card::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 4px;
+        background: var(--nota-cor, var(--border));
+        opacity: 0.8;
+    }
+    .nota-card:hover { border-color: #444c56; box-shadow: var(--shadow); }
+    .nota-card.dragging { opacity: 0.4; cursor: grabbing; }
+
+    .nota-header {
+        padding: 6px 10px 6px 14px;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .nota-titulo {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: var(--text);
+        font-family: var(--font-ui);
+        font-size: 12px;
+        font-weight: 600;
+        outline: none;
+        min-width: 0;
+    }
+    .nota-titulo::placeholder { color: var(--text-muted); font-weight: 400; }
+    .nota-header-actions { display: flex; gap: 4px; align-items: center; }
+
+    .nota-color-swatch {
+        width: 14px; height: 14px;
+        border-radius: 50%;
+        border: 1.5px solid var(--border);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        flex: 0 0 14px;
+    }
+    .nota-color-swatch input[type="color"] {
+        position: absolute;
+        top: -4px; left: -4px;
+        width: 200%; height: 200%;
+        border: none; padding: 0;
+        cursor: pointer;
+        opacity: 0;
+    }
+
+    .nota-texto {
+        width: 100%;
+        min-height: 70px;
+        background: transparent;
+        color: var(--text);
+        border: none;
+        padding: 8px 10px 8px 14px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        resize: vertical;
+        outline: none;
+        line-height: 1.6;
+        display: block;
+    }
+    .nota-texto::placeholder { color: var(--text-muted); opacity: 0.5; }
+
+    /* ── ZEN MODE ── */
+    body.zen-active .sidebar { display: none; }
+    body.zen-active .notes-panel { width: 100%; }
+
+    /* ── STATUS BADGE ── */
+    .badge {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-weight: 600;
+    }
+    .badge-blue { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(88,166,255,0.2); }
+
+    /* ── TOOLTIP ── */
+    [title] { cursor: help; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+        .sidebar { width: 100%; min-width: unset; height: auto; max-height: 40vh; }
+        .workspace { flex-direction: column; height: auto; overflow: auto; }
+        .notes-panel { height: auto; min-height: 60vh; }
+    }
+</style>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <span class="topbar-logo">⬡ Workspace</span>
+            <div class="topbar-divider"></div>
+            <span class="badge badge-blue" id="clock-mini">--:--:--</span>
+        </div>
+        <div class="topbar-right">
+            <button class="btn btn-ghost btn-icon" id="btn-exportar" title="Exportar backup TXT">
+                ↓ Exportar
+            </button>
+            <button class="btn btn-ghost btn-icon" id="btn-zen" title="Modo Foco (esconde cronômetros)">
+                ⊡ Zen
+            </button>
+            <button class="btn btn-ghost btn-icon" id="btn-tema" title="Alternar tema">
+                ◑
+            </button>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <!-- SIDEBAR: Cronômetros -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Cronômetros</span>
+                <div class="sidebar-actions">
+                    <button class="btn btn-ghost btn-icon" onclick="adicionarCronometroNormal()" title="Adicionar cronômetro normal">+↑</button>
+                    <button class="btn btn-ghost btn-icon" onclick="adicionarCronometroRegressivo()" title="Adicionar cronômetro regressivo">+↓</button>
+                </div>
+            </div>
+            <div class="sidebar-body" id="cronometros-container"></div>
+        </div>
+
+        <!-- NOTES PANEL -->
+        <div class="notes-panel">
+            <div class="notes-header">
+                <span class="notes-title">Anotações</span>
+                <div class="notes-actions">
+                    <button class="btn" onclick="adicionarNota()">+ Nova Nota</button>
+                </div>
+            </div>
+            <div class="notes-body" id="notas-container"></div>
+            <div class="notes-footer">
+                <p>Salvo automaticamente</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+    /* ── RELÓGIO ── */
+    function atualizarRelogio() {
+        const now = new Date();
+        document.getElementById('clock-mini').textContent =
+            now.toLocaleTimeString('pt-BR', { hour12: false });
+    }
+    atualizarRelogio();
+    setInterval(atualizarRelogio, 1000);
+
+    /* ── TEMA ── */
+    const btnTema = document.getElementById('btn-tema');
+    const htmlEl = document.documentElement;
+    const temaSalvo = localStorage.getItem('tema');
+    if (temaSalvo) htmlEl.setAttribute('data-theme', temaSalvo);
+    btnTema.addEventListener('click', () => {
+        const novoTema = (htmlEl.getAttribute('data-theme') === 'light') ? 'dark' : 'light';
+        htmlEl.setAttribute('data-theme', novoTema);
+        localStorage.setItem('tema', novoTema);
+    });
+
+    /* ── ZEN ── */
+    const btnZen = document.getElementById('btn-zen');
+    btnZen.addEventListener('click', () => {
+        document.body.classList.toggle('zen-active');
+        btnZen.textContent = document.body.classList.contains('zen-active') ? '⊞ Sair' : '⊡ Zen';
+    });
+
+    /* ══════════════════════════════════════
+       NOTAS
+    ══════════════════════════════════════ */
+    const notasContainer = document.getElementById('notas-container');
+    let dragSrcNota = null;
+
+    function salvarNotas() {
+        const notas = [];
+        notasContainer.querySelectorAll('.nota-card').forEach(card => {
+            notas.push({
+                titulo: card.querySelector('.nota-titulo').value,
+                texto: card.querySelector('.nota-texto').value,
+                cor: card.querySelector('input[type="color"]').value
+            });
+        });
+        localStorage.setItem('notas_cards', JSON.stringify(notas));
+    }
+
+    function adicionarNota(dados = null) {
+        const card = document.createElement('div');
+        card.classList.add('nota-card');
+        card.setAttribute('draggable', 'true');
+
+        // Header
+        const header = document.createElement('div');
+        header.classList.add('nota-header');
+
+        const titulo = document.createElement('input');
+        titulo.type = 'text';
+        titulo.classList.add('nota-titulo');
+        titulo.placeholder = 'Sem título...';
+        if (dados) titulo.value = dados.titulo || '';
+        titulo.addEventListener('input', salvarNotas);
+
+        const headerActions = document.createElement('div');
+        headerActions.classList.add('nota-header-actions');
+
+        // Color swatch
+        const swatch = document.createElement('div');
+        swatch.classList.add('nota-color-swatch');
+        const colorPicker = document.createElement('input');
+        colorPicker.type = 'color';
+        colorPicker.value = dados ? dados.cor : '#58a6ff';
+        swatch.style.background = colorPicker.value;
+        swatch.title = 'Cor do card';
+        swatch.appendChild(colorPicker);
+        colorPicker.addEventListener('input', () => {
+            aplicarCorCard(card, colorPicker.value);
+            swatch.style.background = colorPicker.value;
+            salvarNotas();
+        });
+
+        // Delete btn
+        const btnExcluir = document.createElement('button');
+        btnExcluir.className = 'btn btn-ghost btn-icon btn-danger';
+        btnExcluir.title = 'Excluir nota';
+        btnExcluir.textContent = '✕';
+        btnExcluir.addEventListener('click', () => {
+            if (confirm('Excluir esta nota?')) { card.remove(); salvarNotas(); }
+        });
+
+        headerActions.append(swatch, btnExcluir);
+        header.append(titulo, headerActions);
+
+        // Textarea
+        const texto = document.createElement('textarea');
+        texto.classList.add('nota-texto');
+        texto.placeholder = 'Digite sua anotação aqui...';
+        if (dados) texto.value = dados.texto || '';
+        
+        // Habilitar tecla TAB dentro do textarea
+        texto.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + "\t" + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 1;
+                salvarNotas();
+            }
+        });
+        texto.addEventListener('input', salvarNotas);
+
+        card.append(header, texto);
+        notasContainer.appendChild(card);
+
+        // Apply color
+        aplicarCorCard(card, colorPicker.value);
+        if (dados) {
+            const sw = card.querySelector('.nota-color-swatch');
+            if (sw) sw.style.background = dados.cor || '#58a6ff';
+        }
+
+        // Drag & drop
+        card.addEventListener('dragstart', () => { dragSrcNota = card; card.classList.add('dragging'); });
+        card.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('.nota-card');
+            if (target && target !== dragSrcNota) {
+                const rect = target.getBoundingClientRect();
+                const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                notasContainer.insertBefore(dragSrcNota, next ? target.nextSibling : target);
+            }
+        });
+        card.addEventListener('dragend', () => { card.classList.remove('dragging'); salvarNotas(); });
+
+        salvarNotas();
+    }
+
+    function aplicarCorCard(card, cor) {
+        card.style.setProperty('--nota-cor', cor);
+        card.querySelector('.nota-header').style.borderBottomColor = cor + '30';
+    }
+
+    function carregarNotas() {
+        const salvas = JSON.parse(localStorage.getItem('notas_cards') || '[]');
+        if (salvas.length === 0) {
+            const antigas = localStorage.getItem('notas_cronometro');
+            if (antigas && antigas.trim()) {
+                adicionarNota({ titulo: 'Anotações', texto: antigas, cor: '#58a6ff' });
+                localStorage.removeItem('notas_cronometro');
+                return;
+            }
+            adicionarNota();
+        } else {
+            salvas.forEach(n => adicionarNota(n));
+        }
+    }
+
+    /* ══════════════════════════════════════
+       CRONÔMETROS
+    ══════════════════════════════════════ */
+    const container = document.getElementById("cronometros-container");
+    let dragSrc = null;
+
+    function handleDragStart(e) { dragSrc = this; this.classList.add('dragging'); }
+    function handleDragOver(e) {
+        e.preventDefault();
+        const target = e.target.closest('.cronometro');
+        if (target && target !== dragSrc) {
+            const rect = target.getBoundingClientRect();
+            const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+            container.insertBefore(dragSrc, next ? target.nextSibling : target);
+        }
+    }
+    function handleDragEnd() { this.classList.remove('dragging'); salvarCronometros(); }
+
+    function salvarCronometros() {
+        const cronometros = [];
+        container.querySelectorAll('.cronometro').forEach(c => {
+            cronometros.push({
+                tipo: c.dataset.tipo,
+                nome: c.querySelector('input[type="text"]').value,
+                tempo: c.querySelector('.cron-time').innerText,
+                cor: c.querySelector('input[type="color"]').value,
+                countdownInput: c.querySelector('input.cron-countdown')?.value || ''
+            });
+        });
+        localStorage.setItem('cronometros', JSON.stringify(cronometros));
+    }
+
+    function carregarCronometros() {
+        container.innerHTML = "";
+        const cronometros = JSON.parse(localStorage.getItem('cronometros') || '[]');
+        cronometros.forEach(c => c.tipo === 'normal' ? adicionarCronometroNormal(c) : adicionarCronometroRegressivo(c));
+    }
+
+    function adicionarCronometroNormal(dados = null) {
+        const div = document.createElement("div");
+        div.classList.add("cronometro");
+        div.setAttribute('draggable', 'true');
+        div.dataset.tipo = 'normal';
+
+        const cor = dados?.cor || '#58a6ff';
+        div.style.setProperty('--cron-color', cor);
+
+        const nomeInput = document.createElement("input");
+        nomeInput.type = "text";
+        nomeInput.classList.add('cron-name');
+        nomeInput.placeholder = "Nome do cronômetro";
+        if (dados) nomeInput.value = dados.nome;
+        nomeInput.addEventListener('input', salvarCronometros);
+
+        const tempo = document.createElement("div");
+        tempo.classList.add("cron-time");
+        tempo.innerText = dados ? dados.tempo : "00:00:00";
+        tempo.title = "Clique para editar (pausado)";
+        tempo.addEventListener('click', () => {
+            if (intervalo) { return; }
+            const novoValor = prompt("Edite o tempo (HH:MM:SS):", tempo.innerText);
+            if (novoValor !== null) {
+                const partes = novoValor.split(':');
+                if (partes.length === 3 && partes.every(p => !isNaN(p) && p.trim() !== "")) {
+                    tempo.innerText = novoValor;
+                    segundosSalvos = partes.reduce((acc, t, i) => acc + parseInt(t) * [3600, 60, 1][i], 0);
+                    salvarCronometros();
+                }
+            }
+        });
+
+        const controls = document.createElement("div");
+        controls.classList.add("cron-controls");
+
+        const btnStart = document.createElement("button");
+        btnStart.className = 'btn'; btnStart.innerHTML = '▶';
+        btnStart.title = "Iniciar";
+
+        const btnStop = document.createElement("button");
+        btnStop.className = 'btn'; btnStop.innerHTML = '⏸';
+        btnStop.title = "Pausar";
+
+        const btnReset = document.createElement("button");
+        btnReset.className = 'btn'; btnReset.innerHTML = '⏹';
+        btnReset.title = "Resetar";
+
+        const btnDelete = document.createElement("button");
+        btnDelete.className = 'btn btn-danger'; btnDelete.innerHTML = '✕';
+        btnDelete.title = "Excluir";
+
+        // Color dot
+        const colorDot = document.createElement('div');
+        colorDot.classList.add('cron-color-dot');
+        colorDot.style.background = cor;
+        const colorPicker = document.createElement('input');
+        colorPicker.type = 'color';
+        colorPicker.value = cor;
+        colorDot.appendChild(colorPicker);
+
+        controls.append(btnStart, btnStop, btnReset, btnDelete, colorDot);
+        div.append(nomeInput, tempo, controls);
+        if (dados) container.appendChild(div); else container.prepend(div);
+
+        let inicio = null, intervalo = null;
+        let segundosSalvos = tempo.innerText.split(':').reduce((acc, t, i) => acc + parseInt(t) * [3600, 60, 1][i], 0);
+
+        function atualizar() {
+            const diff = Math.floor((Date.now() - inicio) / 1000) + segundosSalvos;
+            const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
+            tempo.innerText = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        btnStart.addEventListener('click', () => {
+            if (!intervalo) { inicio = Date.now(); intervalo = setInterval(atualizar, 500); div.classList.add('running'); }
+        });
+        btnStop.addEventListener('click', () => {
+            if (intervalo) { segundosSalvos += Math.floor((Date.now() - inicio) / 1000); clearInterval(intervalo); intervalo = null; div.classList.remove('running'); salvarCronometros(); }
+        });
+        btnReset.addEventListener('click', () => {
+            clearInterval(intervalo); intervalo = null; segundosSalvos = 0; tempo.innerText = "00:00:00";
+            div.classList.remove('running'); salvarCronometros();
+        });
+        btnDelete.addEventListener('click', () => {
+            if (confirm("Excluir este cronômetro?")) { clearInterval(intervalo); div.remove(); salvarCronometros(); }
+        });
+        colorPicker.addEventListener('input', () => {
+            const c = colorPicker.value;
+            colorDot.style.background = c;
+            div.style.setProperty('--cron-color', c);
+            salvarCronometros();
+        });
+
+        div.addEventListener('dragstart', handleDragStart);
+        div.addEventListener('dragover', handleDragOver);
+        div.addEventListener('dragend', handleDragEnd);
+    }
+
+    function adicionarCronometroRegressivo(dados = null) {
+        const div = document.createElement("div");
+        div.classList.add("cronometro");
+        div.setAttribute('draggable', 'true');
+        div.dataset.tipo = 'regressivo';
+
+        const cor = dados?.cor || '#d29922';
+        div.style.setProperty('--cron-color', cor);
+
+        const nomeInput = document.createElement("input");
+        nomeInput.type = "text";
+        nomeInput.classList.add('cron-name');
+        nomeInput.placeholder = "Cronômetro regressivo";
+        if (dados) nomeInput.value = dados.nome;
+        nomeInput.addEventListener('input', salvarCronometros);
+
+        const tempo = document.createElement("div");
+        tempo.classList.add("cron-time");
+        tempo.innerText = dados ? dados.tempo : "00:00:00";
+
+        const progressoContainer = document.createElement("div");
+        progressoContainer.classList.add("progresso-container");
+        const progressoBarra = document.createElement("div");
+        progressoBarra.classList.add("progresso-barra");
+        progressoContainer.appendChild(progressoBarra);
+
+        const countdownRow = document.createElement('div');
+        countdownRow.classList.add('countdown-row');
+
+        const countdownInput = document.createElement("input");
+        countdownInput.type = "text";
+        countdownInput.placeholder = "HH:MM:SS";
+        countdownInput.classList.add('cron-countdown');
+        if (dados) countdownInput.value = dados.countdownInput;
+
+        const controls = document.createElement("div");
+        controls.classList.add("cron-controls");
+
+        const btnCountdown = document.createElement("button");
+        btnCountdown.className = 'btn'; btnCountdown.innerHTML = '▶';
+
+        const btnStop = document.createElement("button");
+        btnStop.className = 'btn'; btnStop.innerHTML = '⏸';
+
+        const btnReset = document.createElement("button");
+        btnReset.className = 'btn'; btnReset.innerHTML = '⏹';
+
+        const btnDelete = document.createElement("button");
+        btnDelete.className = 'btn btn-danger'; btnDelete.innerHTML = '✕';
+
+        const colorDot = document.createElement('div');
+        colorDot.classList.add('cron-color-dot');
+        colorDot.style.background = cor;
+        const colorPicker = document.createElement('input');
+        colorPicker.type = 'color';
+        colorPicker.value = cor;
+        colorDot.appendChild(colorPicker);
+
+        countdownRow.append(countdownInput);
+        controls.append(btnCountdown, btnStop, btnReset, btnDelete, colorDot);
+        div.append(nomeInput, tempo, progressoContainer, countdownRow, controls);
+        container.appendChild(div);
+
+        let segundosTotais = 0, intervalo = null, fim = null;
+
+        function atualizarRegressiva() {
+            const restanteMs = Math.max(0, fim - Date.now());
+            const restSeg = Math.floor(restanteMs / 1000);
+            const h = Math.floor(restSeg / 3600), m = Math.floor((restSeg % 3600) / 60), s = restSeg % 60;
+            tempo.innerText = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '00')}`;
+            if (segundosTotais > 0) {
+                const pct = (restanteMs / (segundosTotais * 1000)) * 100;
+                progressoBarra.style.width = pct + "%";
+                progressoBarra.style.background = pct < 15 ? 'var(--danger)' : pct < 30 ? 'var(--warning)' : 'var(--success)';
+            }
+            if (restanteMs <= 0) { clearInterval(intervalo); intervalo = null; div.classList.remove('running'); }
+        }
+
+        countdownInput.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, "");
+            if (v.length > 4) v = v.replace(/^(\d{2})(\d{2})(\d{0,2}).*/, "$1:$2:$3");
+            else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,2}).*/, "$1:$2");
+            e.target.value = v;
+            salvarCronometros();
+        });
+
+        btnCountdown.addEventListener('click', () => {
+            const partes = countdownInput.value.split(":").map(Number);
+            let segs = 0;
+            if (partes.length === 3) segs = partes[0] * 3600 + partes[1] * 60 + partes[2];
+            else if (partes.length === 2) segs = partes[0] * 60 + partes[1];
+            else if (partes.length === 1) segs = partes[0];
+            if (segs > 0) {
+                segundosTotais = segs; fim = Date.now() + segs * 1000;
+                progressoContainer.style.display = "block";
+                clearInterval(intervalo);
+                intervalo = setInterval(atualizarRegressiva, 100);
+                div.classList.add('running');
+            }
+        });
+        btnStop.addEventListener('click', () => { clearInterval(intervalo); intervalo = null; div.classList.remove('running'); salvarCronometros(); });
+        btnReset.addEventListener('click', () => {
+            clearInterval(intervalo); intervalo = null; tempo.innerText = "00:00:00";
+            progressoContainer.style.display = "none"; div.classList.remove('running'); salvarCronometros();
+        });
+        btnDelete.addEventListener('click', () => {
+            if (confirm("Excluir este cronômetro?")) { clearInterval(intervalo); div.remove(); salvarCronometros(); }
+        });
+        colorPicker.addEventListener('input', () => {
+            colorDot.style.background = colorPicker.value;
+            div.style.setProperty('--cron-color', colorPicker.value);
+            salvarCronometros();
+        });
+
+        div.addEventListener('dragstart', handleDragStart);
+        div.addEventListener('dragover', handleDragOver);
+        div.addEventListener('dragend', handleDragEnd);
+    }
+
+    /* ── EXPORTAR ── */
+    function exportarDados() {
+        const cronometros = JSON.parse(localStorage.getItem('cronometros') || '[]');
+        const notas = JSON.parse(localStorage.getItem('notas_cards') || '[]');
+        const dataAtual = new Date().toLocaleString();
+
+        let txt = `BACKUP — WORKSPACE\nExportado em: ${dataAtual}\n${'='.repeat(40)}\n\n`;
+        txt += `--- CRONÔMETROS ---\n`;
+        if (!cronometros.length) { txt += `Nenhum cronômetro.\n`; }
+        else { cronometros.forEach((c, i) => { txt += `${i+1}. [${c.tipo === 'normal' ? '↑' : '↓'}] ${c.nome || 'Sem nome'}: ${c.tempo}\n`; }); }
+
+        txt += `\n--- ANOTAÇÕES ---\n`;
+        if (!notas.length) { txt += `(Nenhuma nota)\n`; }
+        else { notas.forEach((n, i) => { txt += `\n[${i+1}] ${n.titulo || 'Sem título'}\n${n.texto || '(vazio)'}\n${'-'.repeat(40)}\n`; }); }
+        txt += `\n${'='.repeat(40)}\n`;
+
+        const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `workspace_${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    document.getElementById('btn-exportar').addEventListener('click', exportarDados);
+
+    /* ── INIT ── */
+    window.addEventListener('load', () => { carregarCronometros(); carregarNotas(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="assets/favicon_io/site.webmanifest">
+    <title>Cronômetros</title>
+</head>
+<style>
+:root {
+    /* Paleta moderna (Indigo & Slate) */
+    --bg-body: #0f172a;
+    --bg-container: rgba(30, 41, 59, 0.7);
+    --bg-input: rgba(15, 23, 42, 0.5);
+    --text-color: #f1f5f9;
+    --accent-color: #6366f1; 
+    --border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] {
+    --bg-body: #f8fafc;
+    --bg-container: rgba(255, 255, 255, 0.8);
+    --bg-input: #ffffff;
+    --text-color: #1e293b;
+    --border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* --- BASE E LAYOUT (Mantendo suas medidas) --- */
+body {
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-body);
+    background-image: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+    color: var(--text-color);
+    padding: 20px;
+    transition: background 0.3s;
+    line-height: 1.6;
+}
+.container {
+    max-width: 98%;
+    margin: auto;
+    display: flex;
+    gap: 15px; /* Espaço menor entre as colunas */
+    align-items: flex-start;
+}
+.coluna-cronometros {
+    flex: 0 0 260px; 
+    min-width: 260px;
+}
+.coluna-notas {
+    flex: 1;
+    background: var(--bg-container);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    position: sticky;
+    top: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+/* --- CRONÔMETROS --- */
+.cronometro {
+    text-align: center;
+    margin-bottom: 12px;
+    padding: 10px; /* Reduzi o preenchimento interno */
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background-color: var(--bg-container);
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s;
+}
+.cronometro:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.cronometro input[type="text"] {
+    font-size: 13px;
+    background: var(--bg-input);
+    color: var(--text-color);
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    text-align: center;
+    width: 90%;
+    margin-bottom: 10px;
+}
+
+.tempo {
+    font-size: 32px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--text-color);
+    cursor: pointer;
+    margin: 5px 0;
+}
+
+/* --- BOTÕES --- */
+button {
+    padding: 5px 8px;
+    margin: 2px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--bg-input);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+button:hover {
+    background: var(--accent-color);
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* --- BLOCO DE NOTAS (Mantendo seu tamanho original) --- */
+#bloco-notas {
+    width: 100%;
+    height: 75vh; /* Respeitando seu desejo */
+    background: var(--bg-input);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    font-family: 'Consolas', monospace;
+    font-size: 15px;
+    outline: none;
+}
+
+#bloco-notas:focus {
+    border-color: var(--accent-color);
+}
+
+/* --- PROGRESSO --- */
+.progresso-container {
+    width: 85%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    margin: 15px auto;
+    overflow: hidden;
+}
+
+.progresso-barra {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #81c784);
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+}
+
+/* --- MODO ZEN (Mantendo sua lógica) --- */
+body.zen-active .coluna-cronometros, 
+body.zen-active header,
+body.zen-active p {
+    display: none;
+}
+
+body.zen-active .coluna-notas {
+    flex: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+}
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column; /* Empilha os itens em telas de celular */
+    }
+    .coluna-cronometros {
+        width: 100%;
+        min-width: unset;
+    }
+    #bloco-notas {
+        height: 50vh; /* Ajusta a altura das notas no celular */
+    }
+}
+</style>
+</head>
+<body>
+    <header style="display: flex; justify-content: flex-end; margin-bottom: 20px; gap: 10px;">
+        <button id="btn-exportar" title="Exportar Backup">📥 Exportar TXT</button>
+        <button id="btn-tema" style="font-size: 20px; background: none; border: 1px solid var(--border-color); border-radius: 50%;">🌓</button>
+    </header>
+    <div class="container">
+        <div class="coluna-cronometros">
+            <h1>Cronômetros:</h1>
+            <button onclick="adicionarCronometroNormal()">Adicionar Cronômetro</button>
+            <button onclick="adicionarCronometroRegressivo()">Adicionar Cronômetro Regressivo</button>
+    
+            <div id="cronometros-container"></div>
+        </div>
+    
+        <div class="coluna-notas">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Anotações:</h2>
+                <button id="btn-zen" title="Modo Foco">🪟 Modo Zen</button>
+            </div>
+            <textarea id="bloco-notas" placeholder="Digite suas notas aqui..."></textarea>
+            <p style="font-size: 12px; color: #888;">As notas são salvas automaticamente.</p>
+        </div>
+    </div>
+
+<script>
+    const btnTema = document.getElementById('btn-tema');
+    const htmlExtra = document.documentElement;
+
+    // Tema
+    const temaSalvo = localStorage.getItem('tema');
+    if (temaSalvo) htmlExtra.setAttribute('data-theme', temaSalvo);
+
+    btnTema.addEventListener('click', () => {
+        let novoTema = (htmlExtra.getAttribute('data-theme') === 'light') ? 'dark' : 'light';
+        htmlExtra.setAttribute('data-theme', novoTema);
+        localStorage.setItem('tema', novoTema);
+    });
+    // Bloco de Notas
+    const blocoNotas = document.getElementById("bloco-notas");
+
+    blocoNotas.addEventListener('keydown', function(e) {
+        // Atalho Tab (já existente no seu código)
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.selectionStart;
+            this.value = this.value.substring(0, start) + "    " + this.value.substring(this.selectionEnd);
+            this.selectionStart = this.selectionEnd = start + 4;
+            this.dispatchEvent(new Event('input'));
+        }
+
+        // NOVO: Atalho Ctrl + L para selecionar a linha inteira
+        if (e.ctrlKey && e.key === 'l') {
+            e.preventDefault(); // Impede que o navegador foque na barra de endereços
+            
+            const texto = this.value;
+            const pointer = this.selectionStart;
+
+            // Encontra o índice do início da linha (último \n antes do cursor)
+            const inicioLinha = texto.lastIndexOf('\n', pointer - 1) + 1;
+
+            // Encontra o índice do fim da linha (próximo \n após o cursor)
+            let fimLinha = texto.indexOf('\n', pointer);
+            if (fimLinha === -1) fimLinha = texto.length;
+
+            // Aplica a seleção
+            this.setSelectionRange(inicioLinha, fimLinha);
+        }
+    });
+    blocoNotas.addEventListener('input', () => localStorage.setItem('notas_cronometro', blocoNotas.value));
+
+    window.addEventListener('load', () => {
+        carregarCronometros(); 
+        const notasSalvas = localStorage.getItem('notas_cronometro');
+        if (notasSalvas) blocoNotas.value = notasSalvas;
+    });
+
+    const container = document.getElementById("cronometros-container");
+    let dragSrc = null;
+
+    function handleDragStart(e) {
+        dragSrc = this;
+        this.classList.add('dragging');
+    }
+    function handleDragOver(e) {
+        e.preventDefault();
+        const target = e.target.closest('.cronometro');
+        if(target && target !== dragSrc){
+            const rect = target.getBoundingClientRect();
+            const next = (e.clientY - rect.top)/(rect.bottom - rect.top) > 0.5;
+            container.insertBefore(dragSrc, next ? target.nextSibling : target);
+        }
+        // REMOVIDO: salvarCronometros(); daqui
+    }
+    function handleDragEnd() { 
+        this.classList.remove('dragging');
+        // ADICIONADO: Salva apenas uma vez ao finalizar o movimento
+        salvarCronometros(); 
+    }
+    function salvarCronometros() {
+        const cronometros = [];
+        container.querySelectorAll('.cronometro').forEach(c => {
+            cronometros.push({
+                tipo: c.dataset.tipo,
+                nome: c.querySelector('input[type="text"]').value,
+                tempo: c.querySelector('.tempo').innerText,
+                cor: c.querySelector('input[type="color"]').value,
+                countdownInput: c.querySelector('input[type="text"].countdown')?.value || ''
+            });
+        });
+        localStorage.setItem('cronometros', JSON.stringify(cronometros));
+    }
+
+    function carregarCronometros() {
+        container.innerHTML = "";
+        const cronometros = JSON.parse(localStorage.getItem('cronometros') || '[]');
+        cronometros.forEach(c => c.tipo === 'normal' ? adicionarCronometroNormal(c) : adicionarCronometroRegressivo(c));
+    }
+    function exportarDados() {
+        const cronometros = JSON.parse(localStorage.getItem('cronometros') || '[]');
+        const notas = localStorage.getItem('notas_cronometro') || '';
+        const dataAtual = new Date().toLocaleString();
+
+        // 2. Formata o conteúdo para o arquivo TXT
+        let conteudoTexto = `BACKUP DE NOTAS E CRONÔMETROS\n`;
+        conteudoTexto += `Exportado em: ${dataAtual}\n`;
+        conteudoTexto += `==========================================\n\n`;
+
+        conteudoTexto += `--- CRONÔMETROS ---\n`;
+        if (cronometros.length === 0) {
+            conteudoTexto += `Nenhum cronômetro encontrado.\n`;
+        } else {
+            cronometros.forEach((c, i) => {
+                const tipo = c.tipo === 'normal' ? 'Cronômetro' : 'Regressivo';
+                conteudoTexto += `${i + 1}. [${tipo}] ${c.nome || 'Sem nome'}: ${c.tempo}\n`;
+            });
+        }
+
+        conteudoTexto += `\n--- ANOTAÇÕES ---\n`;
+        conteudoTexto += notas || "(Bloco de notas vazio)";
+        conteudoTexto += `\n\n==========================================\n`;
+
+        const blob = new Blob([conteudoTexto], { type: "text/plain;charset=utf-8" });
+
+        const url = URL.createObjectURL(blob);
+        const linkParaDownload = document.createElement("a");
+        
+        linkParaDownload.href = url;
+        linkParaDownload.download = `backup_notas_${new Date().toISOString().slice(0,10)}.txt`;
+        
+        document.body.appendChild(linkParaDownload);
+        linkParaDownload.click();
+        document.body.removeChild(linkParaDownload);
+        URL.revokeObjectURL(url);
+    }
+
+    // Vincula a função ao botão
+    document.getElementById('btn-exportar').addEventListener('click', exportarDados);
+    // Adiciona cronômetro normal
+    function adicionarCronometroNormal(dados=null) {
+        const cronometroDiv = document.createElement("div");
+        cronometroDiv.classList.add("cronometro");
+        cronometroDiv.setAttribute('draggable', 'true');
+        cronometroDiv.dataset.tipo = 'normal';
+
+        const nomeInput = document.createElement("input");
+        nomeInput.type = "text";
+        nomeInput.placeholder = "Nome do cronômetro";
+        if(dados) nomeInput.value = dados.nome;
+        nomeInput.addEventListener('input', salvarCronometros);
+
+        const tempo = document.createElement("h2");
+        tempo.classList.add("tempo");
+        tempo.innerText = dados ? dados.tempo : "00:00:00";
+        tempo.title = "Clique para editar manualmente (apenas quando pausado)";
+
+        tempo.addEventListener('click', () => {
+        // Só permite editar se o intervalo NÃO estiver rodando
+        if (intervalo) {
+            alert("Pausar o cronômetro primeiro para editar o tempo manualmente.");
+            return;
+        }
+
+        const novoValor = prompt("Edite o tempo (formato HH:MM:SS):", tempo.innerText);
+        
+        if (novoValor !== null) {
+            // Validação simples do formato HH:MM:SS
+            const partes = novoValor.split(':');
+            if (partes.length === 3 && partes.every(p => !isNaN(p) && p.trim() !== "")) {
+                tempo.innerText = novoValor;
+                // Atualiza a variável interna de segundos para que o Play continue do novo tempo
+                segundosSalvos = partes.reduce((acc, t, i) => acc + parseInt(t) *[i], 0);
+                salvarCronometros();
+            } else {
+                alert("Formato inválido! Use o padrão 00:00:00.");
+            }
+        }
+    });
+
+        const btnStart = document.createElement("button"); btnStart.innerText = "▶️";
+        const btnStop = document.createElement("button"); btnStop.innerText = "⏸️";
+        const btnReset = document.createElement("button"); btnReset.innerText = "⏹️";
+        const btnDelete = document.createElement("button"); btnDelete.innerText = "Excluir";
+        
+        const colorPicker = document.createElement("input");
+        colorPicker.type = "color";
+        colorPicker.value = dados ? dados.cor : "#333";
+        cronometroDiv.style.backgroundColor = colorPicker.value;
+
+        cronometroDiv.append(nomeInput, tempo, btnStart, btnStop, btnReset, btnDelete, colorPicker);
+        container.appendChild(cronometroDiv);
+
+        let inicio = null, intervalo = null;
+        let segundosSalvos = tempo.innerText.split(':').reduce((acc,t,i)=>acc + parseInt(t)*[3600,60,1][i],0);
+
+        function atualizar() {
+            const diff = Math.floor((Date.now() - inicio) / 1000) + segundosSalvos;
+            const h = Math.floor(diff/3600), m = Math.floor((diff%3600)/60), s = diff%60;
+            tempo.innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+
+        btnStart.addEventListener('click',()=>{ if(!intervalo){ inicio = Date.now(); intervalo = setInterval(atualizar,500); }});
+        btnStop.addEventListener('click',()=>{ if(intervalo){ segundosSalvos += Math.floor((Date.now() - inicio)/1000); clearInterval(intervalo); intervalo=null; salvarCronometros(); }});
+        btnReset.addEventListener('click',()=>{ clearInterval(intervalo); intervalo=null; segundosSalvos=0; tempo.innerText="00:00:00"; salvarCronometros(); });
+        
+        // CONFIRMAÇÃO DE EXCLUSÃO
+        btnDelete.addEventListener('click',()=>{
+            if(confirm("Tem certeza que deseja excluir este cronômetro?")) {
+                clearInterval(intervalo); cronometroDiv.remove(); salvarCronometros();
+            }
+        });
+
+    // Substitua a linha do colorPicker por esta lógica:
+        colorPicker.addEventListener('input', () => {
+            const corHex = colorPicker.value;
+            // Isso aplica a cor escolhida, mas mantém o efeito de vidro se o CSS tiver o backdrop-filter
+            cronometroDiv.style.backgroundColor = corHex + "cc"; // O "cc" adiciona 80% de opacidade ao final do Hex
+            salvarCronometros();
+        });
+        cronometroDiv.addEventListener('dragstart', handleDragStart);
+        cronometroDiv.addEventListener('dragover', handleDragOver);
+        cronometroDiv.addEventListener('dragend', handleDragEnd);
+    }
+
+    // Adiciona cronômetro regressivo
+    function adicionarCronometroRegressivo(dados=null) {
+        const cronometroDiv = document.createElement("div");
+        cronometroDiv.classList.add("cronometro");
+        cronometroDiv.setAttribute('draggable', 'true');
+        cronometroDiv.dataset.tipo = 'regressivo';
+
+        const nomeInput = document.createElement("input");
+        nomeInput.type = "text";
+        nomeInput.placeholder = "Nome do regressivo";
+        if(dados) nomeInput.value = dados.nome;
+        nomeInput.addEventListener('input', salvarCronometros);
+
+        const tempo = document.createElement("h2");
+        tempo.classList.add("tempo");
+        tempo.innerText = dados ? dados.tempo : "00:00:00";
+
+        const progressoContainer = document.createElement("div");
+        progressoContainer.classList.add("progresso-container");
+        const progressoBarra = document.createElement("div");
+        progressoBarra.classList.add("progresso-barra");
+        progressoContainer.appendChild(progressoBarra);
+
+        const countdownInput = document.createElement("input");
+        countdownInput.type = "text";
+        countdownInput.placeholder = "HH:MM:SS";
+        countdownInput.classList.add('countdown');
+        if(dados) countdownInput.value = dados.countdownInput;
+
+        const btnCountdown = document.createElement("button"); btnCountdown.innerText = "▶️";
+        const btnStop = document.createElement("button"); btnStop.innerText = "⏸️";
+        const btnReset = document.createElement("button"); btnReset.innerText = "⏹️";
+        const btnDelete = document.createElement("button"); btnDelete.innerText = "Excluir";
+        const colorPicker = document.createElement("input");
+        colorPicker.type = "color";
+        colorPicker.value = dados ? dados.cor : "#333";
+        cronometroDiv.style.backgroundColor = colorPicker.value;
+
+        cronometroDiv.append(nomeInput, tempo, progressoContainer, countdownInput, btnCountdown, btnStop, btnReset, btnDelete, colorPicker);
+        container.appendChild(cronometroDiv);
+
+        let segundosTotais = 0, intervalo = null, fim = null;
+
+        function atualizarRegressiva() {
+            const restanteMs = Math.max(0, fim - Date.now());
+            const restSeg = Math.floor(restanteMs / 1000);
+            const h = Math.floor(restSeg / 3600), m = Math.floor((restSeg % 3600) / 60), s = restSeg % 60;
+            tempo.innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+            if (segundosTotais > 0) {
+                const pct = (restanteMs / (segundosTotais * 1000)) * 100;
+                progressoBarra.style.width = pct + "%";
+                progressoBarra.style.backgroundColor = pct < 15 ? "#f44336" : "#4caf50";
+            }
+            if(restanteMs <= 0){ clearInterval(intervalo); intervalo = null; }
+        }
+
+        countdownInput.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, "");
+            if (v.length > 4) v = v.replace(/^(\d{2})(\d{2})(\d{0,2}).*/, "$1:$2:$3");
+            else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,2}).*/, "$1:$2");
+            e.target.value = v;
+            salvarCronometros();
+        });
+
+        btnCountdown.addEventListener('click', () => {
+            const partes = countdownInput.value.split(":").map(Number);
+            let segs = 0;
+            if(partes.length === 3) segs = partes[0]*3600 + partes[1]*60 + partes[2];
+            else if(partes.length === 2) segs = partes[0]*60 + partes[1];
+            else if(partes.length === 1) segs = partes[0];
+            
+            if(segs > 0) {
+                segundosTotais = segs;
+                fim = Date.now() + segundosTotais * 1000;
+                progressoContainer.style.display = "block";
+                clearInterval(intervalo);
+                intervalo = setInterval(atualizarRegressiva, 100);
+            }
+        });
+
+        btnStop.addEventListener('click', () => { clearInterval(intervalo); intervalo = null; salvarCronometros(); });
+        btnReset.addEventListener('click', () => { clearInterval(intervalo); intervalo = null; tempo.innerText = "00:00:00"; progressoContainer.style.display = "none"; salvarCronometros(); });
+        
+        // CONFIRMAÇÃO DE EXCLUSÃO
+        btnDelete.addEventListener('click', () => {
+            if(confirm("Tem certeza que deseja excluir este cronômetro?")) {
+                clearInterval(intervalo); cronometroDiv.remove(); salvarCronometros();
+            }
+        });
+
+        colorPicker.addEventListener('input', () => { cronometroDiv.style.backgroundColor = colorPicker.value; salvarCronometros(); });
+        cronometroDiv.addEventListener('dragstart', handleDragStart);
+        cronometroDiv.addEventListener('dragover', handleDragOver);
+        cronometroDiv.addEventListener('dragend', handleDragEnd);
+    }
+    const btnZen = document.getElementById('btn-zen');
+
+    btnZen.addEventListener('click', () => {
+        document.body.classList.toggle('zen-active');
+        
+        // Altera o texto do botão conforme o modo
+        if (document.body.classList.contains('zen-active')) {
+            btnZen.innerText = "🏠 Sair do Foco";
+        } else {
+            btnZen.innerText = "🪟 Modo Zen";
+        }
+    });
+</script>
+</body>
+</html>
