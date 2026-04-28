@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Workspace</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg-panel: #161b22;
+            --bg-input: #0d1117;
+            --text: #e6edf3;
+            --text-muted: #7d8590;
+            --accent: #58a6ff;
+            --border: #30363d;
+            --danger: #f85149;
+            --radius: 8px;
+            --font-ui: "DM Sans", Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-ui);
+            padding: 16px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 360px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+        }
+
+        .login-card h1 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .login-card p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 18px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        label {
+            font-size: 13px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text);
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            width: 100%;
+            margin-top: 8px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: none;
+            background: var(--accent);
+            color: #0d1117;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .erro {
+            margin-top: 10px;
+            color: var(--danger);
+            font-size: 13px;
+            min-height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <main class="login-card">
+        <h1>Entrar</h1>
+        <p>Informe seu usuario e senha para acessar o Workspace.</p>
+
+        <form id="form-login">
+            <div class="form-group">
+                <label for="usuario">Usuario</label>
+                <input id="usuario" name="usuario" type="text" autocomplete="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <input id="senha" name="senha" type="password" autocomplete="current-password" required>
+            </div>
+
+            <button type="submit">Acessar</button>
+            <p id="erro-login" class="erro"></p>
+        </form>
+    </main>
+
+    <script>
+        const CREDENCIAIS_FIXAS = {
+            usuario: "admin",
+            senha: "1234"
+        };
+
+        if (sessionStorage.getItem("workspace_auth") === "true") {
+            window.location.href = "index.html";
+        }
+
+        document.getElementById("form-login").addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const usuario = document.getElementById("usuario").value.trim();
+            const senha = document.getElementById("senha").value;
+            const erroLogin = document.getElementById("erro-login");
+
+            if (usuario === CREDENCIAIS_FIXAS.usuario && senha === CREDENCIAIS_FIXAS.senha) {
+                sessionStorage.setItem("workspace_auth", "true");
+                sessionStorage.setItem("workspace_user", usuario);
+                window.location.href = "index.html";
+                return;
+            }
+
+            erroLogin.textContent = "Usuario ou senha invalidos.";
+        });
+    </script>
+</body>
+</html>
