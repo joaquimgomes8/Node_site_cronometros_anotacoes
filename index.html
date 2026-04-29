@@ -699,12 +699,19 @@
     function salvarCronometros() {
         const cronometros = [];
         container.querySelectorAll('.cronometro').forEach(c => {
+            const estado = c._estadoCronometro || {};
             cronometros.push({
                 tipo: c.dataset.tipo,
                 nome: c.querySelector('input[type="text"]').value,
                 tempo: c.querySelector('.cron-time').innerText,
                 cor: c.querySelector('input[type="color"]').value,
-                countdownInput: c.querySelector('input.cron-countdown')?.value || ''
+                countdownInput: c.querySelector('input.cron-countdown')?.value || '',
+                rodando: estado.rodando || false,
+                inicioTimestamp: estado.inicioTimestamp || null,
+                segundosSalvos: estado.segundosSalvos || 0,
+                // Para regressivo:
+                fimTimestamp: estado.fimTimestamp || null,
+                segundosTotais: estado.segundosTotais || 0,
             });
         });
         localStorage.setItem('cronometros', JSON.stringify(cronometros));
@@ -782,7 +789,9 @@
         if (dados) container.appendChild(div); else container.prepend(div);
 
         let inicio = null, intervalo = null;
-        let segundosSalvos = tempo.innerText.split(':').reduce((acc, t, i) => acc + parseInt(t) * [3600, 60, 1][i], 0);
+        let segundosSalvos = dados?.segundosSalvos ?? tempo.innerText.split(':').reduce((acc, t, i) => acc + parseInt(t) * [3600, 60, 1][i], 0);
+
+        div._estadoCronometro = { rodando: false, inicioTimestamp: null, segundosSalvos };
 
         function atualizar() {
             const diff = Math.floor((Date.now() - inicio) / 1000) + segundosSalvos;
@@ -790,15 +799,31 @@
             tempo.innerText = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         }
 
-        btnStart.addEventListener('click', () => {
-            if (!intervalo) { inicio = Date.now(); intervalo = setInterval(atualizar, 500); div.classList.add('running'); }
-        });
+        function iniciarCronometro() {
+            if (!intervalo) {
+                inicio = Date.now();
+                intervalo = setInterval(atualizar, 500);
+                div.classList.add('running');
+                div._estadoCronometro = { rodando: true, inicioTimestamp: inicio, segundosSalvos };
+                salvarCronometros();
+            }
+        }
+
+        btnStart.addEventListener('click', iniciarCronometro);
         btnStop.addEventListener('click', () => {
-            if (intervalo) { segundosSalvos += Math.floor((Date.now() - inicio) / 1000); clearInterval(intervalo); intervalo = null; div.classList.remove('running'); salvarCronometros(); }
+            if (intervalo) {
+                segundosSalvos += Math.floor((Date.now() - inicio) / 1000);
+                clearInterval(intervalo); intervalo = null;
+                div.classList.remove('running');
+                div._estadoCronometro = { rodando: false, inicioTimestamp: null, segundosSalvos };
+                salvarCronometros();
+            }
         });
         btnReset.addEventListener('click', () => {
             clearInterval(intervalo); intervalo = null; segundosSalvos = 0; tempo.innerText = "00:00:00";
-            div.classList.remove('running'); salvarCronometros();
+            div.classList.remove('running');
+            div._estadoCronometro = { rodando: false, inicioTimestamp: null, segundosSalvos: 0 };
+            salvarCronometros();
         });
         btnDelete.addEventListener('click', () => {
             if (confirm("Excluir este cronômetro?")) { clearInterval(intervalo); div.remove(); salvarCronometros(); }
@@ -809,6 +834,16 @@
             div.style.setProperty('--cron-color', c);
             salvarCronometros();
         });
+
+        // Retomar se estava rodando antes do F5
+        if (dados?.rodando && dados?.inicioTimestamp) {
+            segundosSalvos = dados.segundosSalvos || 0;
+            inicio = dados.inicioTimestamp;
+            intervalo = setInterval(atualizar, 500);
+            div.classList.add('running');
+            div._estadoCronometro = { rodando: true, inicioTimestamp: inicio, segundosSalvos };
+            atualizar();
+        }
 
         div.addEventListener('dragstart', handleDragStart);
         div.addEventListener('dragover', handleDragOver);
@@ -878,7 +913,9 @@
         div.append(nomeInput, tempo, progressoContainer, countdownRow, controls);
         if (dados) container.appendChild(div); else container.prepend(div);
 
-        let segundosTotais = 0, intervalo = null, fim = null;
+        let segundosTotais = dados?.segundosTotais || 0, intervalo = null, fim = dados?.fimTimestamp || null;
+
+        div._estadoCronometro = { rodando: false, fimTimestamp: null, segundosTotais };
 
         function atualizarRegressiva() {
             const restanteMs = Math.max(0, fim - Date.now());
@@ -890,7 +927,11 @@
                 progressoBarra.style.width = pct + "%";
                 progressoBarra.style.background = pct < 15 ? 'var(--danger)' : pct < 30 ? 'var(--warning)' : 'var(--success)';
             }
-            if (restanteMs <= 0) { clearInterval(intervalo); intervalo = null; div.classList.remove('running'); }
+            if (restanteMs <= 0) {
+                clearInterval(intervalo); intervalo = null; div.classList.remove('running');
+                div._estadoCronometro = { rodando: false, fimTimestamp: null, segundosTotais };
+                salvarCronometros();
+            }
         }
 
         countdownInput.addEventListener('input', (e) => {
@@ -913,16 +954,35 @@
                 clearInterval(intervalo);
                 intervalo = setInterval(atualizarRegressiva, 100);
                 div.classList.add('running');
+                div._estadoCronometro = { rodando: true, fimTimestamp: fim, segundosTotais };
+                salvarCronometros();
             }
         });
-        btnStop.addEventListener('click', () => { clearInterval(intervalo); intervalo = null; div.classList.remove('running'); salvarCronometros(); });
+        btnStop.addEventListener('click', () => {
+            clearInterval(intervalo); intervalo = null; div.classList.remove('running');
+            div._estadoCronometro = { rodando: false, fimTimestamp: fim, segundosTotais };
+            salvarCronometros();
+        });
         btnReset.addEventListener('click', () => {
             clearInterval(intervalo); intervalo = null; tempo.innerText = "00:00:00";
-            progressoContainer.style.display = "none"; div.classList.remove('running'); salvarCronometros();
+            progressoContainer.style.display = "none"; div.classList.remove('running');
+            div._estadoCronometro = { rodando: false, fimTimestamp: null, segundosTotais: 0 };
+            salvarCronometros();
         });
         btnDelete.addEventListener('click', () => {
             if (confirm("Excluir este cronômetro?")) { clearInterval(intervalo); div.remove(); salvarCronometros(); }
         });
+
+        // Retomar se estava rodando antes do F5
+        if (dados?.rodando && dados?.fimTimestamp && dados.fimTimestamp > Date.now()) {
+            segundosTotais = dados.segundosTotais || 0;
+            fim = dados.fimTimestamp;
+            progressoContainer.style.display = "block";
+            intervalo = setInterval(atualizarRegressiva, 100);
+            div.classList.add('running');
+            div._estadoCronometro = { rodando: true, fimTimestamp: fim, segundosTotais };
+            atualizarRegressiva();
+        }
         colorPicker.addEventListener('input', () => {
             colorDot.style.background = colorPicker.value;
             div.style.setProperty('--cron-color', colorPicker.value);
