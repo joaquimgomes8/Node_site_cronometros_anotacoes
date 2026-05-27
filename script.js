@@ -419,6 +419,12 @@ function adicionarCronometroRegressivo(dados = null) {
             clearInterval(intervalo); intervalo = null; div.classList.remove('running');
             div._estadoCronometro = { rodando: false, fimTimestamp: null, segundosTotais };
             salvarCronometros();
+            
+            // Exibe o alerta na página com o nome customizado do cronômetro
+            const nomeCronometro = nomeInput.value.trim() || "Cronômetro regressivo";
+            setTimeout(() => {
+                alert(`⏰ O tempo acabou para: ${nomeCronometro}!`);
+            }, 10);
         }
     }
 
