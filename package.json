@@ -1,0 +1,22 @@
+{
+  "name": "node_site_cronometros_anotacoes",
+  "version": "1.0.0",
+  "description": "⬡ Workspace - Cronômetros & Anotações\r Um ambiente centralizado e minimalista projetado para gerenciamento de tempo e organização de notas sem distrações.",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joaquimgomes8/Node_site_cronometros_anotacoes.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/joaquimgomes8/Node_site_cronometros_anotacoes/issues"
+  },
+  "homepage": "https://github.com/joaquimgomes8/Node_site_cronometros_anotacoes#readme"
+}
