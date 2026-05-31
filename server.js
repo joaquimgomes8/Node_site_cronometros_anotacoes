@@ -27,6 +27,8 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(4000, () => {
-  console.log('Servidor rodando em http://localhost:4000');
+const PORT = process.env.PORT || 4000;
+
+server.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
