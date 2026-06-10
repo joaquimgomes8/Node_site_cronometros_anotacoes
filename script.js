@@ -333,6 +333,17 @@ function carregarCronometros() {
     cronometros.forEach(c => c.tipo === 'normal' ? adicionarCronometroNormal(c) : adicionarCronometroRegressivo(c));
 }
 
+function limparCronometros() {
+    if (container.querySelectorAll('.cronometro').length === 0) return;
+    if (!confirm('Excluir todos os cronômetros?')) return;
+
+    container.querySelectorAll('.cronometro').forEach(c => {
+        c._pararCronometro?.();
+        c.remove();
+    });
+    salvarCronometros();
+}
+
 function adicionarCronometroNormal(dados = null) {
     const div = document.createElement("div");
     div.classList.add("cronometro");
@@ -458,6 +469,13 @@ function adicionarCronometroNormal(dados = null) {
     div.addEventListener('dragstart', handleDragStart);
     div.addEventListener('dragover', handleDragOver);
     div.addEventListener('dragend', handleDragEnd);
+
+    div._pararCronometro = () => {
+        if (intervalo) {
+            clearInterval(intervalo);
+            intervalo = null;
+        }
+    };
 }
 
 function adicionarCronometroRegressivo(dados = null) {
@@ -608,6 +626,13 @@ function adicionarCronometroRegressivo(dados = null) {
     div.addEventListener('dragstart', handleDragStart);
     div.addEventListener('dragover', handleDragOver);
     div.addEventListener('dragend', handleDragEnd);
+
+    div._pararCronometro = () => {
+        if (intervalo) {
+            clearInterval(intervalo);
+            intervalo = null;
+        }
+    };
 }
 
 /* ── EXPORTAR ── */
@@ -639,6 +664,7 @@ function exportarDados() {
     URL.revokeObjectURL(url);
 }
 document.getElementById('btn-exportar').addEventListener('click', exportarDados);
+document.getElementById('btn-limpar-cronometros').addEventListener('click', limparCronometros);
 
 document.getElementById('btn-sair').addEventListener('click', () => {
     sessionStorage.removeItem('workspace_auth');
