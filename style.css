@@ -17,6 +17,8 @@
     --font-mono: 'IBM Plex Mono', monospace;
     --font-ui: 'DM Sans', sans-serif;
     --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --nota-img-max-width: 280px;
+    --nota-img-max-height: 200px;
 }
 
 [data-theme="light"] {
@@ -410,12 +412,36 @@ body {
     padding: 8px 10px 8px 14px;
     font-family: var(--font-mono);
     font-size: 12px;
-    resize: vertical;
     outline: none;
     line-height: 1.6;
     display: block;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
-.nota-texto::placeholder { color: var(--text-muted); opacity: 0.5; }
+.nota-texto:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-muted);
+    opacity: 0.5;
+    pointer-events: none;
+}
+.nota-texto img,
+.nota-imagem {
+    max-width: min(100%, var(--nota-img-max-width));
+    max-height: var(--nota-img-max-height);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    margin: 8px 0;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    cursor: pointer;
+}
+.nota-texto img.selecionada {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
 
 /* ── ZEN MODE ── */
 body.zen-active .sidebar { display: none; }

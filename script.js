@@ -31,12 +31,138 @@ btnZen.addEventListener('click', () => {
 const notasContainer = document.getElementById('notas-container');
 let dragSrcNota = null;
 
+function inserirNoCursor(elemento, node) {
+    elemento.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+        elemento.appendChild(node);
+        return;
+    }
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+function criarImagemNota(src) {
+    const img = document.createElement('img');
+    img.src = src;
+    img.classList.add('nota-imagem');
+    img.alt = 'Imagem colada';
+    img.title = 'Clique para selecionar · Ctrl+C para copiar';
+    img.draggable = false;
+    return img;
+}
+
+function dataUrlParaBlob(dataUrl) {
+    if (!dataUrl.startsWith('data:')) return null;
+    const [meta, base64] = dataUrl.split(',');
+    if (!base64) return null;
+    const mime = meta.match(/:(.*?);/)?.[1] || 'image/png';
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+}
+
+function obterImagemSelecionada(elemento) {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return null;
+
+    const range = sel.getRangeAt(0);
+    let node = range.commonAncestorContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+    const imgDireta = node?.closest?.('img');
+    if (imgDireta && elemento.contains(imgDireta)) return imgDireta;
+
+    const imgs = [...range.cloneContents().querySelectorAll('img')];
+    if (imgs.length === 1) {
+        const src = imgs[0].getAttribute('src');
+        return [...elemento.querySelectorAll('img')].find(img => img.getAttribute('src') === src || img.src === src) || null;
+    }
+
+    return null;
+}
+
+function selecionarImagemNota(elemento, img) {
+    elemento.querySelectorAll('img.selecionada').forEach(i => i.classList.remove('selecionada'));
+    if (!img) return;
+
+    img.classList.add('selecionada');
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNode(img);
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+function configurarInteracaoImagemNota(elemento) {
+    elemento.addEventListener('copy', (e) => {
+        const img = obterImagemSelecionada(elemento);
+        if (!img?.src) return;
+
+        const blob = dataUrlParaBlob(img.src);
+        if (!blob) return;
+
+        e.preventDefault();
+        e.clipboardData.clearData();
+        e.clipboardData.items.add(blob, blob.type);
+    });
+
+    elemento.addEventListener('click', (e) => {
+        const img = e.target.closest('img');
+        if (img && elemento.contains(img)) {
+            e.stopPropagation();
+            selecionarImagemNota(elemento, img);
+            return;
+        }
+        elemento.querySelectorAll('img.selecionada').forEach(i => i.classList.remove('selecionada'));
+    });
+
+    elemento.addEventListener('mousedown', (e) => {
+        if (e.target.closest('img')) e.stopPropagation();
+    });
+}
+
+function colarImagemNaNota(e, elemento) {
+    const items = e.clipboardData?.items;
+    if (!items) return false;
+
+    for (const item of items) {
+        if (!item.type.startsWith('image/')) continue;
+
+        e.preventDefault();
+        const arquivo = item.getAsFile();
+        if (!arquivo) return true;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            inserirNoCursor(elemento, criarImagemNota(ev.target.result));
+            salvarNotas();
+        };
+        reader.readAsDataURL(arquivo);
+        return true;
+    }
+    return false;
+}
+
+function htmlParaTextoExport(html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html || '';
+    temp.querySelectorAll('img').forEach(img => img.replaceWith('[imagem]'));
+    return (temp.textContent || '').trim();
+}
+
 function salvarNotas() {
     const notas = [];
     notasContainer.querySelectorAll('.nota-card').forEach(card => {
         notas.push({
             titulo: card.querySelector('.nota-titulo').value,
-            texto: card.querySelector('.nota-texto').value,
+            texto: card.querySelector('.nota-texto').innerHTML,
             cor: card.querySelector('input[type="color"]').value
         });
     });
@@ -86,9 +212,6 @@ function adicionarNota(dados = null) {
         if (confirm('Excluir esta nota?')) { card.remove(); salvarNotas(); }
     });
 
-    headerActions.append(swatch, btnExcluir);
-    header.append(titulo, headerActions);
-
     const btnMinimizar = document.createElement('button');
     btnMinimizar.className = 'btn btn-ghost btn-icon';
     btnMinimizar.title = 'Minimizar nota';
@@ -98,26 +221,25 @@ function adicionarNota(dados = null) {
         btnMinimizar.textContent = minimizado ? '+' : '−';
     });
 
-    headerActions.append(swatch, btnMinimizar, btnExcluir); // adiciona antes do excluir
-    header.append(titulo, headerActions);        
+    headerActions.append(swatch, btnMinimizar, btnExcluir);
+    header.append(titulo, headerActions);
 
-    // Textarea
-    const texto = document.createElement('textarea');
+    const texto = document.createElement('div');
     texto.classList.add('nota-texto');
-    texto.placeholder = 'Digite sua anotação aqui...';
-    if (dados) texto.value = dados.texto || '';
-    
-    // Habilitar tecla TAB dentro do textarea
-    texto.addEventListener('keydown', function(e) {
+    texto.contentEditable = 'true';
+    texto.setAttribute('data-placeholder', 'Digite aqui... Ctrl+V cola imagem · clique nela e Ctrl+C copia');
+    if (dados?.texto) texto.innerHTML = dados.texto;
+
+    configurarInteracaoImagemNota(texto);
+
+    texto.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') {
             e.preventDefault();
-            const start = this.selectionStart;
-            const end = this.selectionEnd;
-            this.value = this.value.substring(0, start) + "\t" + this.value.substring(end);
-            this.selectionStart = this.selectionEnd = start + 1;
+            document.execCommand('insertText', false, '\t');
             salvarNotas();
         }
     });
+    texto.addEventListener('paste', (e) => colarImagemNaNota(e, texto));
     texto.addEventListener('input', salvarNotas);
 
     card.append(header, texto);
@@ -501,7 +623,12 @@ function exportarDados() {
 
     txt += `\n--- ANOTAÇÕES ---\n`;
     if (!notas.length) { txt += `(Nenhuma nota)\n`; }
-    else { notas.forEach((n, i) => { txt += `\n[${i+1}] ${n.titulo || 'Sem título'}\n${n.texto || '(vazio)'}\n${'-'.repeat(40)}\n`; }); }
+    else {
+        notas.forEach((n, i) => {
+            const conteudo = htmlParaTextoExport(n.texto) || '(vazio)';
+            txt += `\n[${i+1}] ${n.titulo || 'Sem título'}\n${conteudo}\n${'-'.repeat(40)}\n`;
+        });
+    }
     txt += `\n${'='.repeat(40)}\n`;
 
     const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
