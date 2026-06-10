@@ -640,4 +640,10 @@ function exportarDados() {
 }
 document.getElementById('btn-exportar').addEventListener('click', exportarDados);
 
+document.getElementById('btn-sair').addEventListener('click', () => {
+    sessionStorage.removeItem('workspace_auth');
+    sessionStorage.removeItem('workspace_user');
+    window.location.href = 'login.html';
+});
+
 window.addEventListener('load', () => { carregarCronometros(); carregarNotas(); });

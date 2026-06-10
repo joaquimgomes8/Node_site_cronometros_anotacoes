@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Workspace</title>
+    <title>Criar conta - Workspace</title>
     <style>
         :root {
             --bg: #0d1117;
@@ -14,6 +14,7 @@
             --accent: #58a6ff;
             --border: #30363d;
             --danger: #f85149;
+            --success: #3fb950;
             --radius: 8px;
             --font-ui: "DM Sans", Arial, sans-serif;
         }
@@ -108,20 +109,22 @@
             color: var(--accent);
         }
 
-        .erro {
+        .mensagem {
             margin-top: 10px;
-            color: var(--danger);
             font-size: 13px;
             min-height: 18px;
         }
+
+        .mensagem.erro { color: var(--danger); }
+        .mensagem.sucesso { color: var(--success); }
     </style>
 </head>
 <body>
     <main class="login-card">
-        <h1>Entrar</h1>
-        <p>Informe seu usuario e senha para acessar o Workspace.</p>
+        <h1>Criar conta</h1>
+        <p>Preencha os dados abaixo para criar seu acesso ao Workspace.</p>
 
-        <form id="form-login">
+        <form id="form-criar-conta">
             <div class="form-group">
                 <label for="usuario">Usuario</label>
                 <input id="usuario" name="usuario" type="text" autocomplete="username" required>
@@ -129,51 +132,74 @@
 
             <div class="form-group">
                 <label for="senha">Senha</label>
-                <input id="senha" name="senha" type="password" autocomplete="current-password" required>
+                <input id="senha" name="senha" type="password" autocomplete="new-password" required>
             </div>
 
-            <button type="submit">Acessar</button>
-            <a class="btn-secundario" href="criar_conta.html">Criar conta</a>
-            <p id="erro-login" class="erro"></p>
+            <div class="form-group">
+                <label for="confirmar-senha">Confirmar senha</label>
+                <input id="confirmar-senha" name="confirmar-senha" type="password" autocomplete="new-password" required>
+            </div>
+
+            <button type="submit">Criar conta</button>
+            <a class="btn-secundario" href="login.html">Ja tenho conta</a>
+            <p id="mensagem-conta" class="mensagem"></p>
         </form>
     </main>
 
     <script>
-        const CREDENCIAIS_FIXAS = {
-            usuario: "admin",
-            senha: "1234"
-        };
+        if (sessionStorage.getItem("workspace_auth") === "true") {
+            window.location.href = "index.html";
+        }
 
         function obterContas() {
             return JSON.parse(localStorage.getItem("workspace_contas") || "[]");
         }
 
-        function credenciaisValidas(usuario, senha) {
-            if (usuario === CREDENCIAIS_FIXAS.usuario && senha === CREDENCIAIS_FIXAS.senha) {
-                return true;
-            }
-            return obterContas().some((conta) => conta.usuario === usuario && conta.senha === senha);
-        }
-
-        if (sessionStorage.getItem("workspace_auth") === "true") {
-            window.location.href = "index.html";
-        }
-
-        document.getElementById("form-login").addEventListener("submit", (event) => {
+        document.getElementById("form-criar-conta").addEventListener("submit", (event) => {
             event.preventDefault();
 
             const usuario = document.getElementById("usuario").value.trim();
             const senha = document.getElementById("senha").value;
-            const erroLogin = document.getElementById("erro-login");
+            const confirmarSenha = document.getElementById("confirmar-senha").value;
+            const mensagem = document.getElementById("mensagem-conta");
 
-            if (credenciaisValidas(usuario, senha)) {
-                sessionStorage.setItem("workspace_auth", "true");
-                sessionStorage.setItem("workspace_user", usuario);
-                window.location.href = "index.html";
+            mensagem.className = "mensagem";
+            mensagem.textContent = "";
+
+            if (!usuario) {
+                mensagem.className = "mensagem erro";
+                mensagem.textContent = "Informe um usuario.";
                 return;
             }
 
-            erroLogin.textContent = "Usuario ou senha invalidos.";
+            if (senha.length < 4) {
+                mensagem.className = "mensagem erro";
+                mensagem.textContent = "A senha deve ter pelo menos 4 caracteres.";
+                return;
+            }
+
+            if (senha !== confirmarSenha) {
+                mensagem.className = "mensagem erro";
+                mensagem.textContent = "As senhas nao coincidem.";
+                return;
+            }
+
+            const contas = obterContas();
+            if (contas.some((conta) => conta.usuario === usuario)) {
+                mensagem.className = "mensagem erro";
+                mensagem.textContent = "Este usuario ja existe.";
+                return;
+            }
+
+            contas.push({ usuario, senha });
+            localStorage.setItem("workspace_contas", JSON.stringify(contas));
+
+            mensagem.className = "mensagem sucesso";
+            mensagem.textContent = "Conta criada com sucesso! Redirecionando...";
+
+            setTimeout(() => {
+                window.location.href = "login.html";
+            }, 1200);
         });
     </script>
 </body>
