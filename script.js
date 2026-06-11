@@ -26,6 +26,61 @@ btnZen.addEventListener('click', () => {
 });
 
 /* ══════════════════════════════════════
+    CÓPIA DE IMAGEM — estado global
+══════════════════════════════════════ */
+let imagemSelecionadaGlobal = null;
+
+function selecionarImagemGlobal(img) {
+    // Remove seleção anterior
+    if (imagemSelecionadaGlobal && imagemSelecionadaGlobal !== img) {
+        imagemSelecionadaGlobal.classList.remove('selecionada');
+    }
+    imagemSelecionadaGlobal = img;
+    if (img) img.classList.add('selecionada');
+}
+
+function dataUrlParaBlob(dataUrl) {
+    if (!dataUrl.startsWith('data:')) return null;
+    const [meta, base64] = dataUrl.split(',');
+    if (!base64) return null;
+    const mime = meta.match(/:(.*?);/)?.[1] || 'image/png';
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+}
+
+// Ctrl+C global: se há imagem selecionada, copia ela para o clipboard
+document.addEventListener('keydown', async (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && imagemSelecionadaGlobal) {
+        const blob = dataUrlParaBlob(imagemSelecionadaGlobal.src);
+        if (!blob) return;
+
+        // Verifica suporte à ClipboardItem (Chrome 76+, Edge 79+)
+        if (typeof ClipboardItem === 'undefined') {
+            alert('Seu navegador não suporta cópia de imagem via teclado. Use Chrome ou Edge.');
+            return;
+        }
+
+        try {
+            e.preventDefault();
+            await navigator.clipboard.write([
+                new ClipboardItem({ [blob.type]: blob })
+            ]);
+        } catch (err) {
+            console.warn('Falha ao copiar imagem:', err);
+        }
+    }
+});
+
+// Clicou fora de qualquer imagem → deseleciona
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('img.nota-imagem') && !e.target.closest('img[class*="nota"]')) {
+        selecionarImagemGlobal(null);
+    }
+});
+
+/* ══════════════════════════════════════
     NOTAS
 ══════════════════════════════════════ */
 const notasContainer = document.getElementById('notas-container');
@@ -54,78 +109,32 @@ function criarImagemNota(src) {
     img.alt = 'Imagem colada';
     img.title = 'Clique para selecionar · Ctrl+C para copiar';
     img.draggable = false;
+
+    img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selecionarImagemGlobal(img);
+    });
+
     return img;
 }
 
-function dataUrlParaBlob(dataUrl) {
-    if (!dataUrl.startsWith('data:')) return null;
-    const [meta, base64] = dataUrl.split(',');
-    if (!base64) return null;
-    const mime = meta.match(/:(.*?);/)?.[1] || 'image/png';
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
+function htmlParaTextoExport(html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html || '';
+    temp.querySelectorAll('img').forEach(img => img.replaceWith('[imagem]'));
+    return (temp.textContent || '').trim();
 }
 
-function obterImagemSelecionada(elemento) {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return null;
-
-    const range = sel.getRangeAt(0);
-    let node = range.commonAncestorContainer;
-    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-
-    const imgDireta = node?.closest?.('img');
-    if (imgDireta && elemento.contains(imgDireta)) return imgDireta;
-
-    const imgs = [...range.cloneContents().querySelectorAll('img')];
-    if (imgs.length === 1) {
-        const src = imgs[0].getAttribute('src');
-        return [...elemento.querySelectorAll('img')].find(img => img.getAttribute('src') === src || img.src === src) || null;
-    }
-
-    return null;
-}
-
-function selecionarImagemNota(elemento, img) {
-    elemento.querySelectorAll('img.selecionada').forEach(i => i.classList.remove('selecionada'));
-    if (!img) return;
-
-    img.classList.add('selecionada');
-    const sel = window.getSelection();
-    const range = document.createRange();
-    range.selectNode(img);
-    sel.removeAllRanges();
-    sel.addRange(range);
-}
-
-function configurarInteracaoImagemNota(elemento) {
-    elemento.addEventListener('copy', (e) => {
-        const img = obterImagemSelecionada(elemento);
-        if (!img?.src) return;
-
-        const blob = dataUrlParaBlob(img.src);
-        if (!blob) return;
-
-        e.preventDefault();
-        e.clipboardData.clearData();
-        e.clipboardData.items.add(blob, blob.type);
+function salvarNotas() {
+    const notas = [];
+    notasContainer.querySelectorAll('.nota-card').forEach(card => {
+        notas.push({
+            titulo: card.querySelector('.nota-titulo').value,
+            texto: card.querySelector('.nota-texto').innerHTML,
+            cor: card.querySelector('input[type="color"]').value
+        });
     });
-
-    elemento.addEventListener('click', (e) => {
-        const img = e.target.closest('img');
-        if (img && elemento.contains(img)) {
-            e.stopPropagation();
-            selecionarImagemNota(elemento, img);
-            return;
-        }
-        elemento.querySelectorAll('img.selecionada').forEach(i => i.classList.remove('selecionada'));
-    });
-
-    elemento.addEventListener('mousedown', (e) => {
-        if (e.target.closest('img')) e.stopPropagation();
-    });
+    localStorage.setItem('notas_cards', JSON.stringify(notas));
 }
 
 function colarImagemNaNota(e, elemento) {
@@ -148,25 +157,6 @@ function colarImagemNaNota(e, elemento) {
         return true;
     }
     return false;
-}
-
-function htmlParaTextoExport(html) {
-    const temp = document.createElement('div');
-    temp.innerHTML = html || '';
-    temp.querySelectorAll('img').forEach(img => img.replaceWith('[imagem]'));
-    return (temp.textContent || '').trim();
-}
-
-function salvarNotas() {
-    const notas = [];
-    notasContainer.querySelectorAll('.nota-card').forEach(card => {
-        notas.push({
-            titulo: card.querySelector('.nota-titulo').value,
-            texto: card.querySelector('.nota-texto').innerHTML,
-            cor: card.querySelector('input[type="color"]').value
-        });
-    });
-    localStorage.setItem('notas_cards', JSON.stringify(notas));
 }
 
 function adicionarNota(dados = null) {
@@ -228,9 +218,18 @@ function adicionarNota(dados = null) {
     texto.classList.add('nota-texto');
     texto.contentEditable = 'true';
     texto.setAttribute('data-placeholder', 'Digite aqui... Ctrl+V cola imagem · clique nela e Ctrl+C copia');
-    if (dados?.texto) texto.innerHTML = dados.texto;
-
-    configurarInteracaoImagemNota(texto);
+    if (dados?.texto) {
+        texto.innerHTML = dados.texto;
+        // Reconecta o listener de clique em imagens já salvas
+        texto.querySelectorAll('img').forEach(img => {
+            img.title = 'Clique para selecionar · Ctrl+C para copiar';
+            img.draggable = false;
+            img.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selecionarImagemGlobal(img);
+            });
+        });
+    }
 
     texto.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') {
@@ -319,7 +318,6 @@ function salvarCronometros() {
             rodando: estado.rodando || false,
             inicioTimestamp: estado.inicioTimestamp || null,
             segundosSalvos: estado.segundosSalvos || 0,
-            // Para regressivo:
             fimTimestamp: estado.fimTimestamp || null,
             segundosTotais: estado.segundosTotais || 0,
         });
@@ -396,7 +394,6 @@ function adicionarCronometroNormal(dados = null) {
     btnDelete.className = 'btn btn-danger'; btnDelete.innerHTML = '✕';
     btnDelete.title = "Excluir";
 
-    // Color dot
     const colorDot = document.createElement('div');
     colorDot.classList.add('cron-color-dot');
     colorDot.style.background = cor;
@@ -456,7 +453,6 @@ function adicionarCronometroNormal(dados = null) {
         salvarCronometros();
     });
 
-    // Retomar se estava rodando antes do F5
     if (dados?.rodando && dados?.inicioTimestamp) {
         segundosSalvos = dados.segundosSalvos || 0;
         inicio = dados.inicioTimestamp;
@@ -471,10 +467,7 @@ function adicionarCronometroNormal(dados = null) {
     div.addEventListener('dragend', handleDragEnd);
 
     div._pararCronometro = () => {
-        if (intervalo) {
-            clearInterval(intervalo);
-            intervalo = null;
-        }
+        if (intervalo) { clearInterval(intervalo); intervalo = null; }
     };
 }
 
@@ -559,12 +552,8 @@ function adicionarCronometroRegressivo(dados = null) {
             clearInterval(intervalo); intervalo = null; div.classList.remove('running');
             div._estadoCronometro = { rodando: false, fimTimestamp: null, segundosTotais };
             salvarCronometros();
-            
-            // Exibe o alerta na página com o nome customizado do cronômetro
             const nomeCronometro = nomeInput.value.trim() || "Cronômetro regressivo";
-            setTimeout(() => {
-                alert(`⏰ O tempo acabou para: ${nomeCronometro}!`);
-            }, 10);
+            setTimeout(() => { alert(`⏰ O tempo acabou para: ${nomeCronometro}!`); }, 10);
         }
     }
 
@@ -607,7 +596,6 @@ function adicionarCronometroRegressivo(dados = null) {
         if (confirm("Excluir este cronômetro?")) { clearInterval(intervalo); div.remove(); salvarCronometros(); }
     });
 
-    // Retomar se estava rodando antes do F5
     if (dados?.rodando && dados?.fimTimestamp && dados.fimTimestamp > Date.now()) {
         segundosTotais = dados.segundosTotais || 0;
         fim = dados.fimTimestamp;
@@ -628,10 +616,7 @@ function adicionarCronometroRegressivo(dados = null) {
     div.addEventListener('dragend', handleDragEnd);
 
     div._pararCronometro = () => {
-        if (intervalo) {
-            clearInterval(intervalo);
-            intervalo = null;
-        }
+        if (intervalo) { clearInterval(intervalo); intervalo = null; }
     };
 }
 
