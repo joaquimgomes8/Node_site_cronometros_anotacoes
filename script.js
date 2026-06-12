@@ -231,14 +231,42 @@ function adicionarNota(dados = null) {
         });
     }
 
-    texto.addEventListener('keydown', (e) => {
+    texto.addEventListener('keydown', async (e) => {
         if (e.key === 'Tab') {
             e.preventDefault();
             document.execCommand('insertText', false, '\t');
             salvarNotas();
         }
+        // Ctrl+C para copiar imagem selecionada
+        if ((e.ctrlKey || e.metaKey) && e.key === 'c' && imagemSelecionadaGlobal) {
+            e.preventDefault();
+            const blob = dataUrlParaBlob(imagemSelecionadaGlobal.src);
+            if (!blob) return;
+            if (typeof ClipboardItem === 'undefined') {
+                alert('Seu navegador não suporta cópia de imagem via teclado. Use Chrome ou Edge.');
+                return;
+            }
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ [blob.type]: blob })
+                ]);
+            } catch (err) {
+                console.warn('Falha ao copiar imagem:', err);
+            }
+        }
     });
-    texto.addEventListener('paste', (e) => colarImagemNaNota(e, texto));
+    texto.addEventListener('paste', (e) => {
+        // Primeiro tenta colar imagem
+        if (colarImagemNaNota(e, texto)) return;
+        
+        // Se não for imagem, cola apenas texto plano
+        e.preventDefault();
+        const textoPlano = e.clipboardData?.getData('text/plain') || '';
+        if (textoPlano) {
+            document.execCommand('insertText', false, textoPlano);
+            salvarNotas();
+        }
+    });
     texto.addEventListener('input', salvarNotas);
 
     card.append(header, texto);
