@@ -318,6 +318,42 @@ function carregarNotas() {
 /* ══════════════════════════════════════
     CRONÔMETROS
 ══════════════════════════════════════ */
+let audioCtxAlerta = null;
+
+function tocarAlertaCronometro() {
+    try {
+        if (!audioCtxAlerta) {
+            audioCtxAlerta = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxAlerta.state === 'suspended') {
+            audioCtxAlerta.resume();
+        }
+
+        const agora = audioCtxAlerta.currentTime;
+        const beeps = [
+            { freq: 880, inicio: 0, duracao: 0.12 },
+            { freq: 880, inicio: 0.18, duracao: 0.12 },
+            { freq: 1100, inicio: 0.36, duracao: 0.3 },
+        ];
+
+        beeps.forEach(({ freq, inicio, duracao }) => {
+            const osc = audioCtxAlerta.createOscillator();
+            const gain = audioCtxAlerta.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.0001, agora + inicio);
+            gain.gain.exponentialRampToValueAtTime(0.25, agora + inicio + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, agora + inicio + duracao);
+            osc.connect(gain);
+            gain.connect(audioCtxAlerta.destination);
+            osc.start(agora + inicio);
+            osc.stop(agora + inicio + duracao);
+        });
+    } catch (err) {
+        console.warn('Alerta sonoro indisponível:', err);
+    }
+}
+
 const container = document.getElementById("cronometros-container");
 let dragSrc = null;
 
@@ -581,7 +617,10 @@ function adicionarCronometroRegressivo(dados = null) {
             div._estadoCronometro = { rodando: false, fimTimestamp: null, segundosTotais };
             salvarCronometros();
             const nomeCronometro = nomeInput.value.trim() || "Cronômetro regressivo";
-            setTimeout(() => { alert(`⏰ O tempo acabou para: ${nomeCronometro}!`); }, 10);
+            setTimeout(() => {
+                tocarAlertaCronometro();
+                alert(`⏰ O tempo acabou para: ${nomeCronometro}!`);
+            }, 10);
         }
     }
 
