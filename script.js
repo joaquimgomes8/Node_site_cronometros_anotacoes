@@ -85,6 +85,21 @@ document.addEventListener('click', (e) => {
 ══════════════════════════════════════ */
 const notasContainer = document.getElementById('notas-container');
 let dragSrcNota = null;
+let dragSrc = null;
+let salvamentoNotasPendente = null;
+
+function limparEstadoDrag() {
+    document.querySelectorAll('.dragging').forEach(elemento => elemento.classList.remove('dragging'));
+    dragSrcNota = null;
+    dragSrc = null;
+}
+
+document.addEventListener('drop', limparEstadoDrag);
+document.addEventListener('dragend', limparEstadoDrag);
+window.addEventListener('blur', limparEstadoDrag);
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) limparEstadoDrag();
+});
 
 function inserirNoCursor(elemento, node) {
     elemento.focus();
@@ -125,7 +140,7 @@ function htmlParaTextoExport(html) {
     return (temp.textContent || '').trim();
 }
 
-function salvarNotas() {
+function salvarNotasAgora() {
     const notas = [];
     notasContainer.querySelectorAll('.nota-card').forEach(card => {
         notas.push({
@@ -136,6 +151,16 @@ function salvarNotas() {
     });
     localStorage.setItem('notas_cards', JSON.stringify(notas));
 }
+
+function salvarNotas() {
+    clearTimeout(salvamentoNotasPendente);
+    salvamentoNotasPendente = setTimeout(() => {
+        salvamentoNotasPendente = null;
+        salvarNotasAgora();
+    }, 150);
+}
+
+window.addEventListener('pagehide', salvarNotasAgora);
 
 function colarImagemNaNota(e, elemento) {
     const items = e.clipboardData?.items;
@@ -190,8 +215,8 @@ function adicionarNota(dados = null) {
     colorPicker.addEventListener('input', () => {
         aplicarCorCard(card, colorPicker.value);
         swatch.style.background = colorPicker.value;
-        salvarNotas();
     });
+    colorPicker.addEventListener('change', salvarNotas);
 
     // Delete btn
     const btnExcluir = document.createElement('button');
@@ -280,17 +305,25 @@ function adicionarNota(dados = null) {
     }
 
     // Drag & drop
-    card.addEventListener('dragstart', () => { dragSrcNota = card; card.classList.add('dragging'); });
+    card.addEventListener('dragstart', (e) => {
+        limparEstadoDrag();
+        clearTimeout(salvamentoNotasPendente);
+        salvamentoNotasPendente = null;
+        dragSrcNota = card;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'nota');
+        card.classList.add('dragging');
+    });
     card.addEventListener('dragover', (e) => {
         e.preventDefault();
         const target = e.target.closest('.nota-card');
-        if (target && target !== dragSrcNota) {
+        if (dragSrcNota?.isConnected && target && target !== dragSrcNota && target.parentElement === notasContainer) {
             const rect = target.getBoundingClientRect();
             const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
             notasContainer.insertBefore(dragSrcNota, next ? target.nextSibling : target);
         }
     });
-    card.addEventListener('dragend', () => { card.classList.remove('dragging'); salvarNotas(); });
+    card.addEventListener('dragend', () => { limparEstadoDrag(); salvarNotas(); });
 
     salvarNotas();
 }
@@ -355,19 +388,24 @@ function tocarAlertaCronometro() {
 }
 
 const container = document.getElementById("cronometros-container");
-let dragSrc = null;
 
-function handleDragStart(e) { dragSrc = this; this.classList.add('dragging'); }
+function handleDragStart(e) {
+    limparEstadoDrag();
+    dragSrc = this;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'cronometro');
+    this.classList.add('dragging');
+}
 function handleDragOver(e) {
     e.preventDefault();
     const target = e.target.closest('.cronometro');
-    if (target && target !== dragSrc) {
+    if (dragSrc?.isConnected && target && target !== dragSrc && target.parentElement === container) {
         const rect = target.getBoundingClientRect();
         const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
         container.insertBefore(dragSrc, next ? target.nextSibling : target);
     }
 }
-function handleDragEnd() { this.classList.remove('dragging'); salvarCronometros(); }
+function handleDragEnd() { limparEstadoDrag(); salvarCronometros(); }
 
 function salvarCronometros() {
     const cronometros = [];
@@ -514,8 +552,8 @@ function adicionarCronometroNormal(dados = null) {
         const c = colorPicker.value;
         colorDot.style.background = c;
         div.style.setProperty('--cron-color', c);
-        salvarCronometros();
     });
+    colorPicker.addEventListener('change', salvarCronometros);
 
     if (dados?.rodando && dados?.inicioTimestamp) {
         segundosSalvos = dados.segundosSalvos || 0;
@@ -675,8 +713,8 @@ function adicionarCronometroRegressivo(dados = null) {
     colorPicker.addEventListener('input', () => {
         colorDot.style.background = colorPicker.value;
         div.style.setProperty('--cron-color', colorPicker.value);
-        salvarCronometros();
     });
+    colorPicker.addEventListener('change', salvarCronometros);
 
     div.addEventListener('dragstart', handleDragStart);
     div.addEventListener('dragover', handleDragOver);
