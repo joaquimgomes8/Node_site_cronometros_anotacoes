@@ -84,22 +84,7 @@ document.addEventListener('click', (e) => {
     NOTAS
 ══════════════════════════════════════ */
 const notasContainer = document.getElementById('notas-container');
-let dragSrcNota = null;
-let dragSrc = null;
 let salvamentoNotasPendente = null;
-
-function limparEstadoDrag() {
-    document.querySelectorAll('.dragging').forEach(elemento => elemento.classList.remove('dragging'));
-    dragSrcNota = null;
-    dragSrc = null;
-}
-
-document.addEventListener('drop', limparEstadoDrag);
-document.addEventListener('dragend', limparEstadoDrag);
-window.addEventListener('blur', limparEstadoDrag);
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) limparEstadoDrag();
-});
 
 function inserirNoCursor(elemento, node) {
     elemento.focus();
@@ -187,7 +172,6 @@ function colarImagemNaNota(e, elemento) {
 function adicionarNota(dados = null) {
     const card = document.createElement('div');
     card.classList.add('nota-card');
-    card.setAttribute('draggable', 'true');
 
     // Header
     const header = document.createElement('div');
@@ -236,7 +220,9 @@ function adicionarNota(dados = null) {
         btnMinimizar.textContent = minimizado ? '+' : '−';
     });
 
-    headerActions.append(swatch, btnMinimizar, btnExcluir);
+    const btnSubir = criarBotaoMovimento(card, '↑', 'Mover nota para cima', notasContainer, salvarNotas);
+    const btnDescer = criarBotaoMovimento(card, '↓', 'Mover nota para baixo', notasContainer, salvarNotas);
+    headerActions.append(swatch, btnSubir, btnDescer, btnMinimizar, btnExcluir);
     header.append(titulo, headerActions);
 
     const texto = document.createElement('div');
@@ -304,28 +290,24 @@ function adicionarNota(dados = null) {
         if (sw) sw.style.background = dados.cor || '#58a6ff';
     }
 
-    // Drag & drop
-    card.addEventListener('dragstart', (e) => {
-        limparEstadoDrag();
-        clearTimeout(salvamentoNotasPendente);
-        salvamentoNotasPendente = null;
-        dragSrcNota = card;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', 'nota');
-        card.classList.add('dragging');
-    });
-    card.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        const target = e.target.closest('.nota-card');
-        if (dragSrcNota?.isConnected && target && target !== dragSrcNota && target.parentElement === notasContainer) {
-            const rect = target.getBoundingClientRect();
-            const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
-            notasContainer.insertBefore(dragSrcNota, next ? target.nextSibling : target);
-        }
-    });
-    card.addEventListener('dragend', () => { limparEstadoDrag(); salvarNotas(); });
-
     salvarNotas();
+}
+
+function criarBotaoMovimento(elemento, simbolo, titulo, container, salvar) {
+    const botao = document.createElement('button');
+    botao.className = 'btn btn-ghost btn-icon btn-movimento';
+    botao.textContent = simbolo;
+    botao.title = titulo;
+    botao.setAttribute('aria-label', titulo);
+    botao.addEventListener('click', () => {
+        const irParaCima = simbolo === '↑';
+        const vizinho = irParaCima ? elemento.previousElementSibling : elemento.nextElementSibling;
+        if (!vizinho) return;
+        if (irParaCima) container.insertBefore(elemento, vizinho);
+        else container.insertBefore(elemento, vizinho.nextElementSibling);
+        salvar();
+    });
+    return botao;
 }
 
 function aplicarCorCard(card, cor) {
@@ -389,24 +371,6 @@ function tocarAlertaCronometro() {
 
 const container = document.getElementById("cronometros-container");
 
-function handleDragStart(e) {
-    limparEstadoDrag();
-    dragSrc = this;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', 'cronometro');
-    this.classList.add('dragging');
-}
-function handleDragOver(e) {
-    e.preventDefault();
-    const target = e.target.closest('.cronometro');
-    if (dragSrc?.isConnected && target && target !== dragSrc && target.parentElement === container) {
-        const rect = target.getBoundingClientRect();
-        const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
-        container.insertBefore(dragSrc, next ? target.nextSibling : target);
-    }
-}
-function handleDragEnd() { limparEstadoDrag(); salvarCronometros(); }
-
 function salvarCronometros() {
     const cronometros = [];
     container.querySelectorAll('.cronometro').forEach(c => {
@@ -447,7 +411,6 @@ function limparCronometros() {
 function adicionarCronometroNormal(dados = null) {
     const div = document.createElement("div");
     div.classList.add("cronometro");
-    div.setAttribute('draggable', 'true');
     div.dataset.tipo = 'normal';
 
     const cor = dados?.cor || '#58a6ff';
@@ -504,7 +467,9 @@ function adicionarCronometroNormal(dados = null) {
     colorPicker.value = cor;
     colorDot.appendChild(colorPicker);
 
-    controls.append(btnStart, btnStop, btnReset, btnDelete, colorDot);
+    const btnSubir = criarBotaoMovimento(div, '↑', 'Mover cronômetro para cima', container, salvarCronometros);
+    const btnDescer = criarBotaoMovimento(div, '↓', 'Mover cronômetro para baixo', container, salvarCronometros);
+    controls.append(btnStart, btnStop, btnReset, btnDelete, colorDot, btnSubir, btnDescer);
     div.append(nomeInput, tempo, controls);
     if (dados) container.appendChild(div); else container.prepend(div);
 
@@ -564,10 +529,6 @@ function adicionarCronometroNormal(dados = null) {
         atualizar();
     }
 
-    div.addEventListener('dragstart', handleDragStart);
-    div.addEventListener('dragover', handleDragOver);
-    div.addEventListener('dragend', handleDragEnd);
-
     div._pararCronometro = () => {
         if (intervalo) { clearInterval(intervalo); intervalo = null; }
     };
@@ -576,7 +537,6 @@ function adicionarCronometroNormal(dados = null) {
 function adicionarCronometroRegressivo(dados = null) {
     const div = document.createElement("div");
     div.classList.add("cronometro");
-    div.setAttribute('draggable', 'true');
     div.dataset.tipo = 'regressivo';
 
     const cor = dados?.cor || '#d29922';
@@ -632,7 +592,9 @@ function adicionarCronometroRegressivo(dados = null) {
     colorDot.appendChild(colorPicker);
 
     countdownRow.append(countdownInput);
-    controls.append(btnCountdown, btnStop, btnReset, btnDelete, colorDot);
+    const btnSubir = criarBotaoMovimento(div, '↑', 'Mover cronômetro para cima', container, salvarCronometros);
+    const btnDescer = criarBotaoMovimento(div, '↓', 'Mover cronômetro para baixo', container, salvarCronometros);
+    controls.append(btnCountdown, btnStop, btnReset, btnDelete, colorDot, btnSubir, btnDescer);
     div.append(nomeInput, tempo, progressoContainer, countdownRow, controls);
     if (dados) container.appendChild(div); else container.prepend(div);
 
@@ -715,10 +677,6 @@ function adicionarCronometroRegressivo(dados = null) {
         div.style.setProperty('--cron-color', colorPicker.value);
     });
     colorPicker.addEventListener('change', salvarCronometros);
-
-    div.addEventListener('dragstart', handleDragStart);
-    div.addEventListener('dragover', handleDragOver);
-    div.addEventListener('dragend', handleDragEnd);
 
     div._pararCronometro = () => {
         if (intervalo) { clearInterval(intervalo); intervalo = null; }
