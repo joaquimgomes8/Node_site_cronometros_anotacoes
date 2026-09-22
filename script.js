@@ -1,3 +1,136 @@
+/* ══════════════════════════════════════
+    NOTAS — versão com Supabase
+══════════════════════════════════════ */
+const notasContainer = document.getElementById('notas-container');
+
+let usuarioAtual = null;
+let salvamentoPendente = null;
+
+// ─── INIT: pega o usuário logado ───
+async function initUsuario() {
+  const { data: { user }, error } = await sb.auth.getUser();
+  if (error || !user) {
+    window.location.href = 'login.html';
+    return false;
+  }
+  usuarioAtual = user;
+  console.log('✅ Logado como:', user.email);
+  return true;
+}
+
+function salvarNotasLocalmente() {
+  const notas = [];
+  notasContainer.querySelectorAll('.nota-card').forEach(card => {
+    notas.push({
+      titulo: card.querySelector('.nota-titulo').value,
+      texto: card.querySelector('.nota-texto').innerHTML,
+      cor: card.querySelector('input[type="color"]').value
+    });
+  });
+  localStorage.setItem('notas_cards', JSON.stringify(notas));
+}
+
+async function salvarNotasNoSupabase() {
+  if (!usuarioAtual) {
+    console.warn('⚠️ salvarNotasNoSupabase: usuário não logado ainda');
+    return;
+  }
+
+  const cards = [...notasContainer.querySelectorAll('.nota-card')];
+  console.log('📤 Salvando', cards.length, 'nota(s) no Supabase...');
+
+  // 1. Apaga tudo do usuário atual
+  const { error: errDel } = await sb
+    .from('notas')
+    .delete()
+    .eq('user_id', usuarioAtual.id);
+
+  if (errDel) {
+    console.error('❌ Erro ao limpar notas:', errDel);
+    return;
+  }
+
+  // 2. Se não tem nenhuma nota, tá ok — só limpou
+  if (cards.length === 0) {
+    console.log('✅ Nenhuma nota pra salvar');
+    return;
+  }
+
+  // 3. Monta o payload e insere
+  const payload = cards.map((card, i) => ({
+    user_id: usuarioAtual.id,
+    titulo: card.querySelector('.nota-titulo').value,
+    texto: card.querySelector('.nota-texto').innerHTML,
+    cor: card.querySelector('input[type="color"]').value,
+    ordem: i,
+  }));
+
+  const { data, error } = await sb.from('notas').insert(payload).select();
+
+  if (error) {
+    console.error('❌ Erro ao inserir notas:', error);
+    return;
+  }
+  console.log('✅ Notas salvas no Supabase:', data);
+}
+
+function salvarNotas() {
+  // 1. cache local (instantâneo)
+  salvarNotasLocalmente();
+
+  // 2. debounce pro Supabase (500ms depois de parar de digitar)
+  clearTimeout(salvamentoPendente);
+  salvamentoPendente = setTimeout(() => {
+    salvarNotasNoSupabase();
+  }, 500);
+}
+
+// ─── CARREGAR ───
+async function carregarNotas() {
+  if (!usuarioAtual) {
+    console.warn('⚠️ carregarNotas: usuário não logado');
+    return;
+  }
+
+  console.log('📥 Carregando notas do Supabase...');
+  const { data, error } = await sb
+    .from('notas')
+    .select('*')
+    .eq('user_id', usuarioAtual.id)
+    .order('ordem', { ascending: true });
+
+  if (error) {
+    console.error('❌ Erro ao carregar do Supabase:', error);
+    // Fallback: carrega do localStorage
+    const locais = JSON.parse(localStorage.getItem('notas_cards') || '[]');
+    locais.forEach(n => adicionarNota(n));
+    return;
+  }
+
+  console.log('📥 Recebidas', data.length, 'nota(s) do Supabase');
+
+  if (data.length > 0) {
+    data.forEach(n => adicionarNota({
+      titulo: n.titulo,
+      texto: n.texto,
+      cor: n.cor
+    }));
+    return;
+  }
+
+  // Supabase vazio → migra o que tem local
+  const locais = JSON.parse(localStorage.getItem('notas_cards') || '[]');
+  if (locais.length > 0) {
+    console.log('📦 Migrando notas locais pro Supabase...');
+    locais.forEach(n => adicionarNota(n));
+    await salvarNotasNoSupabase();
+    return;
+  }
+
+  // Nada em lugar nenhum → cria uma vazia
+  adicionarNota();
+}
+
 /* ── RELÓGIO ── */
 function atualizarRelogio() {
     const now = new Date();
@@ -83,9 +216,6 @@ document.addEventListener('click', (e) => {
 /* ══════════════════════════════════════
     NOTAS
 ══════════════════════════════════════ */
-const notasContainer = document.getElementById('notas-container');
-let salvamentoNotasPendente = null;
-
 function inserirNoCursor(elemento, node) {
     elemento.focus();
     const sel = window.getSelection();
@@ -124,28 +254,6 @@ function htmlParaTextoExport(html) {
     temp.querySelectorAll('img').forEach(img => img.replaceWith('[imagem]'));
     return (temp.textContent || '').trim();
 }
-
-function salvarNotasAgora() {
-    const notas = [];
-    notasContainer.querySelectorAll('.nota-card').forEach(card => {
-        notas.push({
-            titulo: card.querySelector('.nota-titulo').value,
-            texto: card.querySelector('.nota-texto').innerHTML,
-            cor: card.querySelector('input[type="color"]').value
-        });
-    });
-    localStorage.setItem('notas_cards', JSON.stringify(notas));
-}
-
-function salvarNotas() {
-    clearTimeout(salvamentoNotasPendente);
-    salvamentoNotasPendente = setTimeout(() => {
-        salvamentoNotasPendente = null;
-        salvarNotasAgora();
-    }, 150);
-}
-
-window.addEventListener('pagehide', salvarNotasAgora);
 
 function colarImagemNaNota(e, elemento) {
     const items = e.clipboardData?.items;
@@ -313,21 +421,6 @@ function criarBotaoMovimento(elemento, simbolo, titulo, container, salvar) {
 function aplicarCorCard(card, cor) {
     card.style.setProperty('--nota-cor', cor);
     card.querySelector('.nota-header').style.borderBottomColor = cor + '30';
-}
-
-function carregarNotas() {
-    const salvas = JSON.parse(localStorage.getItem('notas_cards') || '[]');
-    if (salvas.length === 0) {
-        const antigas = localStorage.getItem('notas_cronometro');
-        if (antigas && antigas.trim()) {
-            adicionarNota({ titulo: 'Anotações', texto: antigas, cor: '#58a6ff' });
-            localStorage.removeItem('notas_cronometro');
-            return;
-        }
-        adicionarNota();
-    } else {
-        salvas.forEach(n => adicionarNota(n));
-    }
 }
 
 /* ══════════════════════════════════════
@@ -714,10 +807,16 @@ function exportarDados() {
 document.getElementById('btn-exportar').addEventListener('click', exportarDados);
 document.getElementById('btn-limpar-cronometros').addEventListener('click', limparCronometros);
 
-document.getElementById('btn-sair').addEventListener('click', () => {
-    sessionStorage.removeItem('workspace_auth');
-    sessionStorage.removeItem('workspace_user');
-    window.location.href = 'login.html';
+document.getElementById('btn-sair').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  sessionStorage.removeItem('workspace_auth');
+  sessionStorage.removeItem('workspace_user');
+  window.location.href = 'login.html';
 });
 
-window.addEventListener('load', () => { carregarCronometros(); carregarNotas(); });
+window.addEventListener('load', async () => {
+  const ok = await initUsuario();  // ✅ nome certo
+  if (!ok) return;
+  carregarCronometros();
+  await carregarNotas();
+});
