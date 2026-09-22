@@ -88,6 +88,11 @@
             cursor: pointer;
         }
 
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .btn-secundario {
             display: block;
             width: 100%;
@@ -123,8 +128,8 @@
 
         <form id="form-login">
             <div class="form-group">
-                <label for="usuario">Usuario</label>
-                <input id="usuario" name="usuario" type="text" autocomplete="username" required>
+                <label for="usuario">E-mail</label>
+                <input id="usuario" name="usuario" type="email" autocomplete="username" required>
             </div>
 
             <div class="form-group">
@@ -132,48 +137,50 @@
                 <input id="senha" name="senha" type="password" autocomplete="current-password" required>
             </div>
 
-            <button type="submit">Acessar</button>
+            <button type="submit" id="btn-acessar">Acessar</button>
             <a class="btn-secundario" href="criar_conta.html">Criar conta</a>
             <p id="erro-login" class="erro"></p>
         </form>
     </main>
 
+    <!-- Cliente Supabase (biblioteca + configuração) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+
     <script>
-        const CREDENCIAIS_FIXAS = {
-            usuario: "admin",
-            senha: "1234"
-        };
-
-        function obterContas() {
-            return JSON.parse(localStorage.getItem("workspace_contas") || "[]");
-        }
-
-        function credenciaisValidas(usuario, senha) {
-            if (usuario === CREDENCIAIS_FIXAS.usuario && senha === CREDENCIAIS_FIXAS.senha) {
-                return true;
-            }
-            return obterContas().some((conta) => conta.usuario === usuario && conta.senha === senha);
-        }
-
         if (sessionStorage.getItem("workspace_auth") === "true") {
             window.location.href = "index.html";
         }
 
-        document.getElementById("form-login").addEventListener("submit", (event) => {
+        const btnAcessar = document.getElementById("btn-acessar");
+
+        document.getElementById("form-login").addEventListener("submit", async (event) => {
             event.preventDefault();
 
             const usuario = document.getElementById("usuario").value.trim();
             const senha = document.getElementById("senha").value;
             const erroLogin = document.getElementById("erro-login");
+            erroLogin.textContent = "";
 
-            if (credenciaisValidas(usuario, senha)) {
-                sessionStorage.setItem("workspace_auth", "true");
-                sessionStorage.setItem("workspace_user", usuario);
-                window.location.href = "index.html";
+            btnAcessar.disabled = true;
+            btnAcessar.textContent = "Entrando...";
+
+            const { data, error } = await sb.auth.signInWithPassword({
+                email: usuario,
+                password: senha,
+            });
+
+            btnAcessar.disabled = false;
+            btnAcessar.textContent = "Acessar";
+
+            if (error) {
+                erroLogin.textContent = "Usuario ou senha invalidos.";
                 return;
             }
 
-            erroLogin.textContent = "Usuario ou senha invalidos.";
+            sessionStorage.setItem("workspace_auth", "true");
+            sessionStorage.setItem("workspace_user", usuario);
+            window.location.href = "index.html";
         });
     </script>
 </body>

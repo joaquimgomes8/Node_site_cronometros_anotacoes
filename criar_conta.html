@@ -89,6 +89,11 @@
             cursor: pointer;
         }
 
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .btn-secundario {
             display: block;
             width: 100%;
@@ -126,55 +131,58 @@
 
         <form id="form-criar-conta">
             <div class="form-group">
-                <label for="usuario">Usuario</label>
-                <input id="usuario" name="usuario" type="text" autocomplete="username" required>
+                <label for="usuario">E-mail</label>
+                <input id="usuario" name="usuario" type="email" autocomplete="username" required>
             </div>
 
             <div class="form-group">
                 <label for="senha">Senha</label>
-                <input id="senha" name="senha" type="password" autocomplete="new-password" required>
+                <input id="senha" name="senha" type="password" autocomplete="new-password" required minlength="6">
             </div>
 
             <div class="form-group">
                 <label for="confirmar-senha">Confirmar senha</label>
-                <input id="confirmar-senha" name="confirmar-senha" type="password" autocomplete="new-password" required>
+                <input id="confirmar-senha" name="confirmar-senha" type="password" autocomplete="new-password" required minlength="6">
             </div>
 
-            <button type="submit">Criar conta</button>
+            <button type="submit" id="btn-criar-conta">Criar conta</button>
             <a class="btn-secundario" href="login.html">Ja tenho conta</a>
             <p id="mensagem-conta" class="mensagem"></p>
         </form>
     </main>
+
+    <!-- Cliente Supabase (biblioteca + configuração) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
 
     <script>
         if (sessionStorage.getItem("workspace_auth") === "true") {
             window.location.href = "index.html";
         }
 
-        function obterContas() {
-            return JSON.parse(localStorage.getItem("workspace_contas") || "[]");
-        }
+        const formCriarConta = document.getElementById("form-criar-conta");
+        const btnCriarConta = document.getElementById("btn-criar-conta");
+        const mensagem = document.getElementById("mensagem-conta");
 
-        document.getElementById("form-criar-conta").addEventListener("submit", (event) => {
+        formCriarConta.addEventListener("submit", async (event) => {
             event.preventDefault();
 
             const usuario = document.getElementById("usuario").value.trim();
             const senha = document.getElementById("senha").value;
             const confirmarSenha = document.getElementById("confirmar-senha").value;
-            const mensagem = document.getElementById("mensagem-conta");
 
             mensagem.className = "mensagem";
             mensagem.textContent = "";
 
             if (!usuario) {
                 mensagem.className = "mensagem erro";
-                mensagem.textContent = "Informe um usuario.";
+                mensagem.textContent = "Informe um e-mail.";
                 return;
             }
 
-            if (senha.length < 4) {
+            if (senha.length < 6) {
                 mensagem.className = "mensagem erro";
-                mensagem.textContent = "A senha deve ter pelo menos 4 caracteres.";
+                mensagem.textContent = "A senha deve ter pelo menos 6 caracteres.";
                 return;
             }
 
@@ -184,15 +192,22 @@
                 return;
             }
 
-            const contas = obterContas();
-            if (contas.some((conta) => conta.usuario === usuario)) {
+            btnCriarConta.disabled = true;
+            btnCriarConta.textContent = "Criando...";
+
+            const { data, error } = await sb.auth.signUp({
+                email: usuario,
+                password: senha,
+            });
+
+            btnCriarConta.disabled = false;
+            btnCriarConta.textContent = "Criar conta";
+
+            if (error) {
                 mensagem.className = "mensagem erro";
-                mensagem.textContent = "Este usuario ja existe.";
+                mensagem.textContent = error.message;
                 return;
             }
-
-            contas.push({ usuario, senha });
-            localStorage.setItem("workspace_contas", JSON.stringify(contas));
 
             mensagem.className = "mensagem sucesso";
             mensagem.textContent = "Conta criada com sucesso! Redirecionando...";
